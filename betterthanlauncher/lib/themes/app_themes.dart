@@ -1,0 +1,1 @@
+enum AppThemes { dark, light }
