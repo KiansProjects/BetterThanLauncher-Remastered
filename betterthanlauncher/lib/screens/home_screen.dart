@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../components/round_icon_button.dart';
 import '../components/top_left_border_painter.dart';
 import '../themes/theme_manager.dart';
+import '../service/instance_manager.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -13,7 +15,7 @@ class HomeScreen extends StatelessWidget {
     final double leftBarWidth = 80;
 
     return Scaffold(
-      backgroundColor: theme.background,
+      backgroundColor: theme.components,
       body: Stack(
         children: [
           Positioned(
@@ -23,12 +25,63 @@ class HomeScreen extends StatelessWidget {
             bottom: 0,
             child: CustomPaint(
               painter: TopLeftBorderPainter(
-                backgroundColor: theme.components,
+                backgroundColor: theme.background,
                 borderColor: theme.components3,
                 borderWidth: 1,
                 radius: 20,
               ),
-              child: Container(),
+              child: ValueListenableBuilder(
+                valueListenable: InstanceManager().instances,
+                builder: (context, instanceList, _) {
+                  return Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: instanceList.isEmpty
+                        ? Center(
+                            child: Text(
+                              "No Instances Found",
+                              style: TextStyle(
+                                color: theme.text2,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: instanceList.length,
+                            itemBuilder: (context, i) {
+                              final name = instanceList[i]
+                                  .path
+                                  .split(Platform.pathSeparator)
+                                  .last;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: theme.components,
+                                    borderRadius: BorderRadius.circular(10),
+                                    //border: Border.all(color: theme.components3, width: 1),
+                                  ),
+                                  child: ListTile(
+                                    title: Text(
+                                      name,
+                                      style: TextStyle(
+                                        color: theme.text,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    trailing: Icon(Icons.play_arrow, color: theme.text),
+                                    onTap: () {
+                                      // TODO: Launch instance screen
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  );
+                },
+              ),
             ),
           ),
 
@@ -73,7 +126,9 @@ class HomeScreen extends StatelessWidget {
                   
                   RoundIconButton(
                     icon: Icon(Icons.add, color: theme.text2),
-                    onPressed: () {},
+                    onPressed: () async {
+                      await InstanceManager().createInstance("Instance_${DateTime.now().millisecondsSinceEpoch}");
+                    },
                     normalColor: theme.components4,
                     hoverColor: theme.components5,
                   ),
