@@ -1,88 +1,187 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:window_manager/window_manager.dart';
 import 'themes/theme_manager.dart';
+import 'screens/build_screen.dart';
 import 'screens/home_screen.dart';
+import 'service/authenticate.dart';
 import 'service/instance_manager.dart';
 import 'service/library_manager.dart';
+import 'service/version_manager.dart';
+import 'service/java_file_compiler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
 
-  await setupAppFolders();
-  await InstanceManager().init();
+  final lastLine = ValueNotifier<String>('');
 
-  final libManager = LibraryManager();
-  await libManager.init();
+  runZonedGuarded(() {
+    runApp(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: SplashScreen(lastLine: lastLine),
+    ));
+  }, (e, s) => print('Error: $e'), zoneSpecification: ZoneSpecification(
+    print: (self, parent, zone, line) {
+      lastLine.value = line;
+      parent.print(zone, line);
+    },
+  ));
 
-  await libManager.downloadLibrary(
-    groupId: 'net.raphimc',
-    artifactId: 'MinecraftAuth',
-    version: '4.1.2',
-  );
+  final bytes = await rootBundle.load('assets/icons/app_icon.png');
+  final tempDir = await getTemporaryDirectory();
+  final tempIconPath = p.join(tempDir.path, 'app_icon.png');
+  final file = File(tempIconPath);
+  await file.writeAsBytes(bytes.buffer.asUint8List());
 
-  await libManager.downloadLibrary(
-    groupId: 'net.lenni0451.commons',
-    artifactId: 'httpclient',
-    version: '1.8.0',
-  );
-
-  await libManager.downloadLibrary(
-    groupId: 'com.google.code.gson',
-    artifactId: 'gson',
-    version: '2.13.2',
-  );
-
-  await libManager.downloadLibrary(
-    groupId: 'org.apache.logging.log4j',
-    artifactId: 'log4j-slf4j2-impl',
-    version: '2.20.0',
-  );
-
-  await libManager.downloadLibrary(
-    groupId: 'org.slf4j',
-    artifactId: 'slf4j-api',
-    version: '2.0.17',
-  );
-
-  libManager.downloadLibrary(
-    groupId: 'org.apache.logging.log4j',
-    artifactId: 'log4j-api',
-    version: '2.20.0'
-  );
-
-  libManager.downloadLibrary(
-    groupId: 'org.apache.logging.log4j',
-    artifactId: 'log4j-core',
-    version: '2.20.0'
-  );
-
-  runApp(BetterThanLauncher());
+  await windowManager.setSize(const Size(1280, 720));
+  await windowManager.center();
+  await windowManager.setTitle('BetterThanLauncher');
+  await windowManager.setIcon(tempIconPath);
+  await windowManager.show();
 }
 
-// javac -cp "/home/kian/Dokumente/libraries/net/raphimc/MinecraftAuth/4.1.2/MinecraftAuth-4.1.2.jar:/home/kian/Dokumente/libraries/net/lenni0451/commons/httpclient/1.8.0/httpclient-1.8.0.jar:/home/kian/Dokumente/libraries/com/google/code/gson/gson/2.13.2/gson-2.13.2.jar:/home/kian/Dokumente/libraries/org/apache/logging/log4j/log4j-slf4j2-impl/2.20.0/log4j-slf4j2-impl-2.20.0.jar:/home/kian/Dokumente/libraries/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar:/home/kian/Dokumente/libraries/org/apache/logging/log4j/log4j-api/2.20.0/log4j-api-2.20.0.jar:/home/kian/Dokumente/libraries/org/apache/logging/log4j/log4j-core/2.20.0/log4j-core-2.20.0.jar" Authenticate.java
-// java -cp ".:/home/kian/Dokumente/libraries/net/raphimc/MinecraftAuth/4.1.2/MinecraftAuth-4.1.2.jar:/home/kian/Dokumente/libraries/net/lenni0451/commons/httpclient/1.8.0/httpclient-1.8.0.jar:/home/kian/Dokumente/libraries/com/google/code/gson/gson/2.13.2/gson-2.13.2.jar:/home/kian/Dokumente/libraries/org/apache/logging/log4j/log4j-slf4j2-impl/2.20.0/log4j-slf4j2-impl-2.20.0.jar:/home/kian/Dokumente/libraries/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar:/home/kian/Dokumente/libraries/org/apache/logging/log4j/log4j-api/2.20.0/log4j-api-2.20.0.jar:/home/kian/Dokumente/libraries/org/apache/logging/log4j/log4j-core/2.20.0/log4j-core-2.20.0.jar" Authenticate
+class SplashScreen extends StatefulWidget {
+  final ValueNotifier<String> lastLine;
+  const SplashScreen({super.key, required this.lastLine});
 
-Future<void> setupAppFolders() async {
-  final dir = await getApplicationDocumentsDirectory();
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
 
-  final instancesDir = Directory('${dir.path}/instances');
-  final librariesDir = Directory('${dir.path}/libraries');
-  final versionsDir = Directory('${dir.path}/versions');
-  final scriptsDir = Directory('${dir.path}/scripts');
-
-  if (!await instancesDir.exists()) await instancesDir.create(recursive: true);
-  if (!await librariesDir.exists()) await librariesDir.create(recursive: true);
-  if (!await versionsDir.exists()) await versionsDir.create(recursive: true);
-  if (!await scriptsDir.exists()) await scriptsDir.create(recursive: true);
-
-  final scriptFile = File('${scriptsDir.path}/Authenticate.class');
-  if (!await scriptFile.exists()) {
-    final data = await rootBundle.load('assets/scripts/Authenticate.class');
-    final bytes = data.buffer.asUint8List();
-    await scriptFile.writeAsBytes(bytes);
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runSetup());
   }
+
+  Future<void> _runSetup() async {
+    try {
+      print('Setting up app folders...');
+      final dirs = await setupAppFolders();
+      print('Folders ready.');
+
+      final launcherDir = dirs[0];
+      final instancesDir = dirs[1];
+      final librariesDir = dirs[2];
+      final versionsDir = dirs[3];
+      final scriptsDir = dirs[4];
+
+      print('Initializing InstanceManager...');
+      final instManager = InstanceManager();
+      await instManager.init(instancesDirPath: instancesDir.path);
+
+      print('Initializing LibraryManager...');
+      final libManager = LibraryManager();
+      await libManager.init(libDirPath: librariesDir.path);
+
+      await libManager.downloadLibrary(
+        groupId: 'net.raphimc',
+        artifactId: 'MinecraftAuth',
+        version: '4.1.2',
+      );
+      await libManager.downloadLibrary(
+        groupId: 'net.lenni0451.commons',
+        artifactId: 'httpclient',
+        version: '1.8.0',
+      );
+      await libManager.downloadLibrary(
+        groupId: 'com.google.code.gson',
+        artifactId: 'gson',
+        version: '2.13.2',
+      );
+      await libManager.downloadLibrary(
+        groupId: 'org.apache.logging.log4j',
+        artifactId: 'log4j-slf4j2-impl',
+        version: '2.20.0',
+      );
+      await libManager.downloadLibrary(
+        groupId: 'org.slf4j',
+        artifactId: 'slf4j-api',
+        version: '2.0.17',
+      );
+      await libManager.downloadLibrary(
+        groupId: 'org.apache.logging.log4j',
+        artifactId: 'log4j-api',
+        version: '2.20.0',
+      );
+      await libManager.downloadLibrary(
+        groupId: 'org.apache.logging.log4j',
+        artifactId: 'log4j-core',
+        version: '2.20.0',
+      );
+
+      print('Library downloads complete.');
+
+      final versManager = VersionManager();
+      await versManager.init(versionsDirPath: versionsDir.path);
+      await versManager.downloadAllVersions();
+      print('Versions downloaded.');
+
+      final compiler = JavaFileCompiler();
+      await compiler.init(scriptsDirPath: scriptsDir.path);
+
+      compiler.addLibraryPaths([
+        await libManager.getLibraryPath(groupId: 'net.raphimc', artifactId: 'MinecraftAuth', version: '4.1.2'),
+        await libManager.getLibraryPath(groupId: 'net.lenni0451.commons', artifactId: 'httpclient', version: '1.8.0'),
+        await libManager.getLibraryPath(groupId: 'com.google.code.gson', artifactId: 'gson', version: '2.13.2'),
+      ]);
+
+      await compiler.compileClass('Authenticate.java');
+      print('Java compilation done.');
+
+      final auth = Authenticator();
+      await auth.init(profileDirPath: launcherDir.path, scriptsDirPath: scriptsDir.path);
+
+      auth.addLibraryPaths([
+        await libManager.getLibraryPath(groupId: 'net.raphimc', artifactId: 'MinecraftAuth', version: '4.1.2'),
+        await libManager.getLibraryPath(groupId: 'net.lenni0451.commons', artifactId: 'httpclient', version: '1.8.0'),
+        await libManager.getLibraryPath(groupId: 'com.google.code.gson', artifactId: 'gson', version: '2.13.2'),
+        await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-slf4j2-impl', version: '2.20.0'),
+        await libManager.getLibraryPath(groupId: 'org.slf4j', artifactId: 'slf4j-api', version: '2.0.17'),
+        await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-api', version: '2.20.0'),
+        await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-core', version: '2.20.0'),
+      ]);
+
+      await auth.authenticateFlow();
+      print('Authentication complete.');
+
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const BetterThanLauncher()),
+        );
+      }
+    } catch (e) {
+      print('Setup failed: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BuildScreen(lastLine: widget.lastLine);
+  }
+}
+
+Future<List<Directory>> setupAppFolders() async {
+  final exePath = Platform.resolvedExecutable;
+  final exeDir = Directory(p.dirname(exePath));
+
+  final launcherDir = Directory(p.join(exeDir.path, 'launcher'));
+  final instancesDir = Directory(p.join(launcherDir.path, 'instances'));
+  final librariesDir = Directory(p.join(launcherDir.path, 'libraries'));
+  final versionsDir = Directory(p.join(launcherDir.path, 'versions'));
+  final scriptsDir = Directory(p.join(launcherDir.path, 'scripts'));
+
+  for (final dir in [instancesDir, librariesDir, versionsDir, scriptsDir]) {
+    if (!await dir.exists()) await dir.create(recursive: true);
+  }
+
+  return [launcherDir, instancesDir, librariesDir, versionsDir, scriptsDir];
 }
 
 class BetterThanLauncher extends StatelessWidget {

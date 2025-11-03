@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 class LibraryManager {
   static final LibraryManager _instance = LibraryManager._internal();
@@ -10,9 +9,9 @@ class LibraryManager {
 
   late Directory _librariesDir;
 
-  Future<void> init() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    _librariesDir = Directory(p.join(appDir.path, 'libraries'));
+  Future<void> init({required String libDirPath}) async {
+    _librariesDir = Directory(libDirPath);
+
     if (!await _librariesDir.exists()) {
       await _librariesDir.create(recursive: true);
     }
@@ -73,5 +72,21 @@ class LibraryManager {
       throw Exception('Library not found locally.');
     }
     return file;
+  }
+
+  Future<String> getLibraryPath({
+    required String groupId,
+    required String artifactId,
+    required String version,
+  }) async {
+    final groupPath = groupId.replaceAll('.', '/');
+    final fileName = '$artifactId-$version.jar';
+    final file = File(p.join(_librariesDir.path, groupPath, artifactId, version, fileName));
+
+    if (!await file.exists()) {
+      throw Exception('Library not found locally. You may need to download it first.');
+    }
+
+    return file.path;
   }
 }

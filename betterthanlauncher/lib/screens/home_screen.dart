@@ -26,7 +26,7 @@ class HomeScreen extends StatelessWidget {
             child: CustomPaint(
               painter: TopLeftBorderPainter(
                 backgroundColor: theme.background,
-                borderColor: theme.components3,
+                borderColor: theme.components2,
                 borderWidth: 1,
                 radius: 20,
               ),
@@ -60,6 +60,13 @@ class HomeScreen extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     color: theme.components,
                                     borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.5),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ]
                                     //border: Border.all(color: theme.components3, width: 1),
                                   ),
                                   child: ListTile(

@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 
 class InstanceManager {
   static final InstanceManager _instance = InstanceManager._internal();
@@ -8,16 +7,16 @@ class InstanceManager {
   InstanceManager._internal();
 
   final ValueNotifier<List<Directory>> instances = ValueNotifier([]);
+  late Directory _instancesRootDir;
 
-  Future<void> init() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final instancesDir = Directory('${dir.path}/instances');
+  Future<void> init({required String instancesDirPath}) async {
+    _instancesRootDir = Directory(instancesDirPath);
 
-    if (!await instancesDir.exists()) {
-      await instancesDir.create(recursive: true);
+    if (!await _instancesRootDir.exists()) {
+      await _instancesRootDir.create(recursive: true);
     }
 
-    instances.value = instancesDir
+    instances.value = _instancesRootDir
         .listSync()
         .whereType<Directory>()
         .toList();
@@ -28,8 +27,8 @@ class InstanceManager {
   }
 
   Future<void> createInstance(String name) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final newInstanceDir = Directory('${dir.path}/instances/$name');
+    final newInstanceDir =
+        Directory('${_instancesRootDir.path}${Platform.pathSeparator}$name');
 
     if (!await newInstanceDir.exists()) {
       await newInstanceDir.create(recursive: true);
@@ -39,5 +38,6 @@ class InstanceManager {
   }
 
   bool instanceExists(String name) =>
-      instances.value.any((d) => d.path.split(Platform.pathSeparator).last == name);
+      instances.value.any((d) =>
+          d.path.split(Platform.pathSeparator).last == name);
 }
