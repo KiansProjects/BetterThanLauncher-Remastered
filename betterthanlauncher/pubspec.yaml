@@ -68,7 +68,9 @@ flutter:
     - assets/icons/logo.png
     - assets/icons/title.png
     - assets/icons/instance_icon.png
+
     - assets/scripts/Authenticate.java
+    - assets/scripts/JarMerger.java
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

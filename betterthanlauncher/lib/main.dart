@@ -133,6 +133,7 @@ class _SplashScreenState extends State<SplashScreen> {
       ]);
 
       await compiler.compileClass('Authenticate.java');
+      await compiler.compileClass('JarMerger.java');
       print('Java compilation done.');
 
       final auth = Authenticator();
