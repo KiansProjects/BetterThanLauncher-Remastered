@@ -145,6 +145,7 @@ class _SplashScreenState extends State<SplashScreen> {
         await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-core', version: '2.20.0'),
       ]);
 
+      print('Initializing InstanceManager...');
       final instManager = InstanceManager();
       await instManager.init(instancesDirPath: instancesDir.path, scriptsDirPath: scriptsDir.path, versionsDirPath: versionsDir.path);
 
