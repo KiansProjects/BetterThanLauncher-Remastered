@@ -10,20 +10,6 @@ import java.util.jar.JarOutputStream;
 public class JarMerger {
     private static final Map<String, Boolean> entryMap = new HashMap<>();
 
-    public static void main(String[] args) {
-        if (args.length != 3) {
-            System.out.println("Usage: java JarMerger <jar1> <jar2> <output.jar>");
-            return;
-        }
-
-        String jarFile1 = args[0];
-        String jarFile2 = args[1];
-        String outputJar = args[2];
-
-        merge(jarFile1, jarFile2, outputJar);
-        System.out.println("Merge completed: " + outputJar);
-    }
-
     public static void merge(String jarFile1, String jarFile2, String outputJar) {
         try (FileOutputStream fos = new FileOutputStream(outputJar);
              JarOutputStream jos = new JarOutputStream(fos)) {
@@ -46,7 +32,6 @@ public class JarMerger {
             while ((entry = jis.getNextJarEntry()) != null) {
                 String entryName = entry.getName();
 
-                // Skip duplicate entries
                 if (entryMap.getOrDefault(entryName, false)) {
                     continue;
                 }
@@ -63,5 +48,19 @@ public class JarMerger {
                 jos.closeEntry();
             }
         }
+    }
+
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.println("Usage: java JarMerger <jar1> <jar2> <output.jar>");
+            return;
+        }
+
+        String jarFile1 = args[0];
+        String jarFile2 = args[1];
+        String outputJar = args[2];
+
+        merge(jarFile1, jarFile2, outputJar);
+        System.out.println("Merge completed: " + outputJar);
     }
 }

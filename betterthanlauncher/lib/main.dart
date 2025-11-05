@@ -72,10 +72,6 @@ class _SplashScreenState extends State<SplashScreen> {
       final versionsDir = dirs[3];
       final scriptsDir = dirs[4];
 
-      print('Initializing InstanceManager...');
-      final instManager = InstanceManager();
-      await instManager.init(instancesDirPath: instancesDir.path);
-
       print('Initializing LibraryManager...');
       final libManager = LibraryManager();
       await libManager.init(libDirPath: librariesDir.path);
@@ -148,6 +144,9 @@ class _SplashScreenState extends State<SplashScreen> {
         await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-api', version: '2.20.0'),
         await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-core', version: '2.20.0'),
       ]);
+
+      final instManager = InstanceManager();
+      await instManager.init(instancesDirPath: instancesDir.path, scriptsDirPath: scriptsDir.path, versionsDirPath: versionsDir.path);
 
       await auth.authenticateFlow();
       print('Authentication complete.');

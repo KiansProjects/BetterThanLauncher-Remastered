@@ -56,7 +56,6 @@ class VersionManager {
     }
 
     final body = response.body;
-
     final regex = RegExp(r'href="(v[^"/]+)/"');
     final matches = regex.allMatches(body);
 
@@ -74,5 +73,37 @@ class VersionManager {
   Future<void> downloadAllVersions() async {
     await downloadMinecraftBeta();
     await downloadBtaVersions();
+  }
+
+  Future<List<String>> getVersions() async {
+    if (!await _versionsDir.exists()) {
+      return [];
+    }
+
+    final entries = _versionsDir.listSync();
+    final versions = <String>[];
+
+    for (final entity in entries) {
+      if (entity is Directory) {
+        final jarFile = File(p.join(entity.path, 'client.jar'));
+        if (await jarFile.exists()) {
+          versions.add(p.basename(entity.path));
+        }
+      }
+    }
+
+    versions.sort();
+    return versions;
+  }
+
+  Future<String?> getVersionPath(String versionName) async {
+    final dir = Directory(p.join(_versionsDir.path, versionName));
+    final jarFile = File(p.join(dir.path, 'client.jar'));
+
+    if (await jarFile.exists()) {
+      return dir.path;
+    } else {
+      return null;
+    }
   }
 }
