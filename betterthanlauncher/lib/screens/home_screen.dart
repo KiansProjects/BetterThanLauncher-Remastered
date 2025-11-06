@@ -6,18 +6,26 @@ import '../themes/theme_manager.dart';
 import '../service/instance_manager.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final InstanceManager instanceManager;
+
+  const HomeScreen({
+    super.key,
+    required this.instanceManager,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = ThemeManager.currentTheme.value;
-    final double topBarHeight = 80;
-    final double leftBarWidth = 80;
+    const double topBarHeight = 80;
+    const double leftBarWidth = 80;
 
     return Scaffold(
       backgroundColor: theme.components,
       body: Stack(
         children: [
+          // ─────────────────────────────────────────────
+          // MAIN AREA – Instanzliste
+          // ─────────────────────────────────────────────
           Positioned(
             top: topBarHeight,
             left: leftBarWidth,
@@ -31,7 +39,7 @@ class HomeScreen extends StatelessWidget {
                 radius: 20,
               ),
               child: ValueListenableBuilder(
-                valueListenable: InstanceManager().instances,
+                valueListenable: instanceManager.instances,
                 builder: (context, instanceList, _) {
                   return Padding(
                     padding: const EdgeInsets.all(20),
@@ -66,8 +74,7 @@ class HomeScreen extends StatelessWidget {
                                         blurRadius: 10,
                                         offset: const Offset(0, 5),
                                       ),
-                                    ]
-                                    //border: Border.all(color: theme.components3, width: 1),
+                                    ],
                                   ),
                                   child: ListTile(
                                     title: Text(
@@ -78,9 +85,7 @@ class HomeScreen extends StatelessWidget {
                                       ),
                                     ),
                                     trailing: Icon(Icons.play_arrow, color: theme.text),
-                                    onTap: () {
-                                      // TODO: Launch instance screen
-                                    },
+                                    onTap: () => _startInstance(context, name),
                                   ),
                                 ),
                               );
@@ -92,6 +97,9 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
+          // ─────────────────────────────────────────────
+          // TOP BAR
+          // ─────────────────────────────────────────────
           Positioned(
             top: 0,
             left: 0,
@@ -112,6 +120,9 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
+          // ─────────────────────────────────────────────
+          // LEFT SIDEBAR
+          // ─────────────────────────────────────────────
           Positioned(
             top: topBarHeight,
             left: 0,
@@ -123,23 +134,25 @@ class HomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
-                  
+
                   RoundIconButton(
                     icon: Icon(Icons.home, color: theme.text2),
                     onPressed: () {},
                     normalColor: theme.components4,
                     hoverColor: theme.components5,
                   ),
-                  
+
                   RoundIconButton(
                     icon: Icon(Icons.add, color: theme.text2),
                     onPressed: () async {
-                      await InstanceManager().createInstance("Instance_${DateTime.now().millisecondsSinceEpoch}");
+                      await instanceManager.createInstance(
+                        "Instance_${DateTime.now().millisecondsSinceEpoch}",
+                      );
                     },
                     normalColor: theme.components4,
                     hoverColor: theme.components5,
                   ),
-                  
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Divider(color: theme.text, thickness: 1, height: 24),
@@ -151,7 +164,7 @@ class HomeScreen extends StatelessWidget {
                     normalColor: theme.components4,
                     hoverColor: theme.components5,
                   ),
-                  
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Divider(color: theme.text, thickness: 1, height: 24),
@@ -163,9 +176,9 @@ class HomeScreen extends StatelessWidget {
                     normalColor: theme.components4,
                     hoverColor: theme.components5,
                   ),
-                  
+
                   RoundIconButton(
-                    icon: Icon(Icons.discord, color: theme.text2), 
+                    icon: Icon(Icons.discord, color: theme.text2),
                     onPressed: () {},
                     normalColor: theme.components4,
                     hoverColor: theme.components5,
@@ -176,6 +189,76 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // 🔹 Instance Start Logik + Dialog
+  // ─────────────────────────────────────────────
+  Future<void> _startInstance(BuildContext context, String name) async {
+    final theme = ThemeManager.currentTheme.value;
+    final lastLine = ValueNotifier<String>("Starting instance '$name'...");
+
+    // Fortschrittsdialog anzeigen
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: theme.background,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: SizedBox(
+          width: 300,
+          child: ValueListenableBuilder<String>(
+            valueListenable: lastLine,
+            builder: (context, line, _) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: theme.text),
+                  const SizedBox(height: 20),
+                  Text(
+                    line,
+                    style: TextStyle(color: theme.text, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final process = await instanceManager.startInstanceWithOutput(name);
+
+      // stdout → UI
+      process.stdout.transform(SystemEncoding().decoder).listen((line) {
+        lastLine.value = line.trim();
+      });
+
+      // stderr → UI (rot markiert)
+      process.stderr.transform(SystemEncoding().decoder).listen((line) {
+        lastLine.value = "⚠️ ${line.trim()}";
+      });
+
+      final exitCode = await process.exitCode;
+      Navigator.of(context).pop(); // Dialog schließen
+
+      if (exitCode == 0) {
+        _showSnack(context, "Instance '$name' exited successfully.");
+      } else {
+        _showSnack(context, "Instance crashed (code $exitCode)");
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      _showSnack(context, "Error starting instance: $e");
+    }
+  }
+
+  void _showSnack(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
     );
   }
 }

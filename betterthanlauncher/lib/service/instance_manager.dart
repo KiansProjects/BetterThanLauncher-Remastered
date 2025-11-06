@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import 'library_manager.dart';
 import 'version_manager.dart';
 
 class InstanceManager {
@@ -11,18 +12,20 @@ class InstanceManager {
   final ValueNotifier<List<Directory>> instances = ValueNotifier([]);
   late Directory _instancesRootDir;
   late Directory _scriptsDir;
+  late LibraryManager _libraryManager;
   late VersionManager _versionManager;
 
   Future<void> init({
     required String instancesDirPath,
     required String scriptsDirPath,
-    required String versionsDirPath,
+    required LibraryManager libraryManager,
+    required VersionManager versionManager,
   }) async {
     _instancesRootDir = Directory(instancesDirPath);
     _scriptsDir = Directory(scriptsDirPath);
 
-    _versionManager = VersionManager();
-    await _versionManager.init(versionsDirPath: versionsDirPath);
+    _libraryManager = libraryManager;
+    _versionManager = versionManager;
 
     if (!await _instancesRootDir.exists()) {
       await _instancesRootDir.create(recursive: true);
@@ -85,5 +88,36 @@ class InstanceManager {
 
     instances.value = [...instances.value, newInstanceDir];
   }
-}
 
+  Future<Process> startInstanceWithOutput(String name) async {
+    final instanceDir = Directory(p.join(_instancesRootDir.path, name));
+    if (!await instanceDir.exists()) {
+      throw Exception("Instance '$name' does not exist.");
+    }
+
+    final clientJar = File(p.join(instanceDir.path, 'client.jar'));
+    if (!await clientJar.exists()) {
+      throw Exception("client.jar not found in instance '$name'.");
+    }
+
+    final minecraftAuthLib = await _libraryManager.getLibraryPath(
+      groupId: 'net.raphimc',
+      artifactId: 'MinecraftAuth',
+      version: '4.1.2',
+    );
+
+    final process = await Process.start(
+      'java',
+      [
+        '-cp',
+        '${clientJar.path}${Platform.isWindows ? ";" : ":"}$minecraftAuthLib',
+        'net.minecraft.client.Minecraft',
+        '--username', 'Player123',
+      ],
+      workingDirectory: instanceDir.path,
+      mode: ProcessStartMode.normal,
+    );
+
+    return process;
+  }
+}

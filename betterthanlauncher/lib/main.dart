@@ -147,14 +147,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
       print('Initializing InstanceManager...');
       final instManager = InstanceManager();
-      await instManager.init(instancesDirPath: instancesDir.path, scriptsDirPath: scriptsDir.path, versionsDirPath: versionsDir.path);
+      await instManager.init(instancesDirPath: instancesDir.path, scriptsDirPath: scriptsDir.path, libraryManager: libManager, versionManager: versManager);
 
       await auth.authenticateFlow();
       print('Authentication complete.');
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const BetterThanLauncher()),
+          MaterialPageRoute(builder: (_) => const BetterThanLauncher(instanceManager: instManager,)),
         );
       }
     } catch (e) {
@@ -186,7 +186,12 @@ Future<List<Directory>> setupAppFolders() async {
 }
 
 class BetterThanLauncher extends StatelessWidget {
-  const BetterThanLauncher({super.key});
+  final InstanceManager instanceManager;
+
+  const BetterThanLauncher({
+    super.key,
+    required this.instanceManager,
+  });
 
   Future<String> getJavaVersion() async {
     try {
@@ -203,7 +208,7 @@ class BetterThanLauncher extends StatelessWidget {
       valueListenable: ThemeManager.currentTheme,
       builder: (context, theme, _) {
         return MaterialApp(
-          title: 'Flutter App',
+          title: 'BetterThanLauncher',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             scaffoldBackgroundColor: theme.background,
@@ -214,9 +219,9 @@ class BetterThanLauncher extends StatelessWidget {
               bodyMedium: TextStyle(color: theme.text2),
             ),
           ),
-          home: const HomeScreen(),
+          home: HomeScreen(instanceManager: instanceManager),
         );
       },
     );
-  }  
+  }
 }

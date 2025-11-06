@@ -72,7 +72,11 @@ class Authenticator {
   Future<bool> runJavaWithJson(String json) async {
     try {
       final classpath = [_scriptsDir.path, ..._libraryPaths].join(Platform.isWindows ? ';' : ':');
-      final process = await Process.start('java', ['-cp', classpath, 'Authenticate', json], workingDirectory: _scriptsDir.path);
+      final process = await Process.start(
+        'java', 
+        ['-cp', classpath, 'Authenticate', json], 
+        workingDirectory: _scriptsDir.path
+      );
 
       final output = await process.stdout.transform(utf8.decoder).join();
       final errorOutput = await process.stderr.transform(utf8.decoder).join();
