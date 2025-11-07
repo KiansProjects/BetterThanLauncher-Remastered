@@ -91,25 +91,70 @@ class _SplashScreenState extends State<SplashScreen> {
         artifactId: 'gson',
         version: '2.13.2',
       );
-      await libManager.downloadLibrary(
-        groupId: 'org.apache.logging.log4j',
-        artifactId: 'log4j-slf4j2-impl',
-        version: '2.20.0',
-      );
+
       await libManager.downloadLibrary(
         groupId: 'org.slf4j',
         artifactId: 'slf4j-api',
         version: '2.0.17',
       );
+
+    final os = Platform.isWindows ? 'windows' : Platform.isMacOS ? 'macos' : 'linux';
+
+    List<String> nativeSuffixes;
+    if (Platform.isLinux) {
+      nativeSuffixes = ['natives-$os'];
+    } else if (Platform.isMacOS) {
+      nativeSuffixes = ['natives-$os', 'natives-$os-arm64'];
+    } else if (Platform.isWindows) {
+      nativeSuffixes = ['natives-$os', 'natives-$os-x86', 'natives-$os-arm64'];
+    } else {
+      throw UnsupportedError('Unsupported OS: $os');
+    }
+
+    final lwjglModules = [
+      'lwjgl',
+      'lwjgl-freetype',
+      'lwjgl-glfw',
+      'lwjgl-jemalloc',
+      'lwjgl-openal',
+      'lwjgl-opengl',
+      'lwjgl-stb',
+    ];
+
+    for (final module in lwjglModules) {
       await libManager.downloadLibrary(
-        groupId: 'org.apache.logging.log4j',
-        artifactId: 'log4j-api',
-        version: '2.20.0',
+        groupId: 'org.lwjgl',
+        artifactId: module,
+        version: '3.3.3',
       );
+
+      for (final suffix in nativeSuffixes) {
+        await libManager.downloadLibrary(
+          groupId: 'org.lwjgl',
+          artifactId: module,
+          suffix: suffix,
+          version: '3.3.3',
+        );
+      }
+    }
+
+      final log4jModules = [
+        'log4j-api',
+        'log4j-core',
+        'log4j-slf4j2-impl',
+      ];
+      for (final module in log4jModules) {
+        await libManager.downloadLibrary(
+          groupId: 'org.apache.logging.log4j',
+          artifactId: module,
+          version: '2.20.0',
+        );
+      }
+
       await libManager.downloadLibrary(
-        groupId: 'org.apache.logging.log4j',
-        artifactId: 'log4j-core',
-        version: '2.20.0',
+        groupId: 'org.slf4j',
+        artifactId: 'slf4j-api',
+        version: '2.0.7',
       );
 
       print('Library downloads complete.');
@@ -154,7 +199,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const BetterThanLauncher(instanceManager: instManager,)),
+          MaterialPageRoute(builder: (_) => BetterThanLauncher(instanceManager: instManager)),
         );
       }
     } catch (e) {

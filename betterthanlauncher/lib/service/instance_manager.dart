@@ -51,15 +51,7 @@ class InstanceManager {
     }
 
     await newInstanceDir.create(recursive: true);
-    print("🔸 Creating instance $name...");
-
-    await _versionManager.downloadMinecraftBeta();
-    await _versionManager.downloadBtaVersions();
-
-    final betaJarPath = await _versionManager.getVersionPath('b1.7.3');
-    if (betaJarPath == null) {
-      throw Exception('Minecraft Beta JAR not found.');
-    }
+    print("Creating instance $name...");
 
     final versions = await _versionManager.getVersions();
     final btaVersion = versions.lastWhere(
@@ -71,12 +63,17 @@ class InstanceManager {
       throw Exception('BTA JAR not found.');
     }
 
+    final betaJarPath = await _versionManager.getVersionPath('b1.7.3');
+    if (betaJarPath == null) {
+      throw Exception('Minecraft Beta JAR not found.');
+    }
+
     final mergedJarPath = p.join(newInstanceDir.path, 'client.jar');
-    print('Merging $betaJarPath + $btaJarPath → $mergedJarPath');
+    print('Merging $mergedJarPath');
 
     final result = await Process.run(
       'java',
-      ['-cp', _scriptsDir.path, 'JarMerger', betaJarPath, btaJarPath, mergedJarPath],
+      ['-cp', _scriptsDir.path, 'JarMerger', btaJarPath, betaJarPath, mergedJarPath],
     );
 
     if (result.exitCode != 0) {
@@ -100,23 +97,127 @@ class InstanceManager {
       throw Exception("client.jar not found in instance '$name'.");
     }
 
-    final minecraftAuthLib = await _libraryManager.getLibraryPath(
-      groupId: 'net.raphimc',
-      artifactId: 'MinecraftAuth',
-      version: '4.1.2',
+    final lwjglModules = [
+      'lwjgl',
+      'lwjgl-freetype',
+      'lwjgl-glfw',
+      'lwjgl-jemalloc',
+      'lwjgl-openal',
+      'lwjgl-opengl',
+      'lwjgl-stb',
+    ];
+
+    final os = Platform.isWindows ? 'windows' : Platform.isMacOS ? 'macos' : 'linux';
+
+    List<String> nativeSuffixes;
+    if (Platform.isLinux) {
+      nativeSuffixes = ['natives-$os'];
+    } else if (Platform.isMacOS) {
+      nativeSuffixes = ['natives-$os', 'natives-$os-arm64'];
+    } else if (Platform.isWindows) {
+      nativeSuffixes = ['natives-$os', 'natives-$os-x86', 'natives-$os-arm64'];
+    } else {
+      throw UnsupportedError('Unsupported OS: $os');
+    }
+
+    final lwjglLibs = <String>[];
+    for (final module in lwjglModules) {
+      final jar = await _libraryManager.getLibraryPath(
+        groupId: 'org.lwjgl',
+        artifactId: module,
+        version: '3.3.3',
+      );
+      lwjglLibs.add(jar);
+
+      for (final suffix in nativeSuffixes) {
+        final nativeJar = await _libraryManager.getLibraryPath(
+          groupId: 'org.lwjgl',
+          artifactId: module,
+          suffix: suffix,
+          version: '3.3.3',
+        );
+        lwjglLibs.add(nativeJar);
+      }
+    }
+
+    final log4jModules = [
+      'log4j-api',
+      'log4j-core',
+      'log4j-slf4j2-impl',
+    ];
+    final log4jLibs = await Future.wait(log4jModules.map((m) => _libraryManager.getLibraryPath(
+          groupId: 'org.apache.logging.log4j',
+          artifactId: m,
+          version: '2.20.0',
+    )));
+
+    final slf4jApi = await _libraryManager.getLibraryPath(
+      groupId: 'org.slf4j',
+      artifactId: 'slf4j-api',
+      version: '2.0.7',
     );
+
+    final separator = Platform.isWindows ? ';' : ':';
+    final classpath = [
+      clientJar.path,
+      ...lwjglLibs,
+      ...log4jLibs.whereType<String>(),
+      slf4jApi,
+    ].join(separator);
+
+    final jvmArgs = [
+      '-XX:+UseG1GC',
+      '-Dsun.rmi.dgc.server.gcInterval=2147483646',
+      '-XX:+UnlockExperimentalVMOptions',
+      '-XX:G1NewSizePercent=20',
+      '-XX:G1ReservePercent=20',
+      '-XX:MaxGCPauseMillis=50',
+      '-XX:G1HeapRegionSize=32M',
+    ];
+
+    final gameArgs = [
+      '--username', 'Player123',
+      '--gameDir', instanceDir.path,
+      '--assetsDir', p.join(instanceDir.path, 'assets'),
+      '--version', 'custom',
+    ];
+
+    final javaArgs = [
+      ...jvmArgs,
+      '-cp',
+      classpath,
+      'net.minecraft.client.Minecraft',
+      ...gameArgs,
+    ];
+    
+    print('Starting instance with: java ${javaArgs.join(' ')}');
 
     final process = await Process.start(
       'java',
-      [
-        '-cp',
-        '${clientJar.path}${Platform.isWindows ? ";" : ":"}$minecraftAuthLib',
-        'net.minecraft.client.Minecraft',
-        '--username', 'Player123',
-      ],
+      javaArgs,
       workingDirectory: instanceDir.path,
       mode: ProcessStartMode.normal,
     );
+
+    process.stdout
+        .transform(SystemEncoding().decoder)
+        .listen((data) {
+          if (data.trim().isNotEmpty) {
+            print(data);
+          }
+        });
+
+    process.stderr
+        .transform(SystemEncoding().decoder)
+        .listen((data) {
+          if (data.trim().isNotEmpty) {
+            print(data);
+          }
+        });
+
+    process.exitCode.then((code) {
+      print('Process exited with code $code');
+    });
 
     return process;
   }
