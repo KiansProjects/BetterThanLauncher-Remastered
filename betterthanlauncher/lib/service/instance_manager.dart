@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -190,7 +191,7 @@ class InstanceManager {
       ...gameArgs,
     ];
     
-    print('Starting instance with: java ${javaArgs.join(' ')}');
+    // print('Starting instance with: java ${javaArgs.join(' ')}');
 
     final process = await Process.start(
       'java',
@@ -200,18 +201,20 @@ class InstanceManager {
     );
 
     process.stdout
-        .transform(SystemEncoding().decoder)
-        .listen((data) {
-          if (data.trim().isNotEmpty) {
-            print(data);
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) {
+          if (line.trim().isNotEmpty) {
+            print(line);
           }
         });
 
     process.stderr
-        .transform(SystemEncoding().decoder)
-        .listen((data) {
-          if (data.trim().isNotEmpty) {
-            print(data);
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) {
+          if (line.trim().isNotEmpty) {
+            print(line);
           }
         });
 

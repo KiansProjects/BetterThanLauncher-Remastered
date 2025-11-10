@@ -4,14 +4,21 @@ import '../components/round_icon_button.dart';
 import '../components/top_left_border_painter.dart';
 import '../themes/theme_manager.dart';
 import '../service/instance_manager.dart';
+import 'instance_list_view.dart';
+import 'instance_output_view.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final InstanceManager instanceManager;
 
-  const HomeScreen({
-    super.key,
-    required this.instanceManager,
-  });
+  const HomeScreen({super.key, required this.instanceManager});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final ValueNotifier<String> _output = ValueNotifier<String>("");
+  String? _activeInstance;
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +30,7 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: theme.components,
       body: Stack(
         children: [
-          // ─────────────────────────────────────────────
-          // MAIN AREA – Instanzliste
-          // ─────────────────────────────────────────────
+          // MAIN AREA
           Positioned(
             top: topBarHeight,
             left: leftBarWidth,
@@ -35,94 +40,41 @@ class HomeScreen extends StatelessWidget {
               painter: TopLeftBorderPainter(
                 backgroundColor: theme.background,
                 borderColor: theme.components2,
-                borderWidth: 1,
+                borderWidth: 2,
                 radius: 20,
               ),
-              child: ValueListenableBuilder(
-                valueListenable: instanceManager.instances,
-                builder: (context, instanceList, _) {
-                  return Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: instanceList.isEmpty
-                        ? Center(
-                            child: Text(
-                              "No Instances Found",
-                              style: TextStyle(
-                                color: theme.text2,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: instanceList.length,
-                            itemBuilder: (context, i) {
-                              final name = instanceList[i]
-                                  .path
-                                  .split(Platform.pathSeparator)
-                                  .last;
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: theme.components,
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.5),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ListTile(
-                                    title: Text(
-                                      name,
-                                      style: TextStyle(
-                                        color: theme.text,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    trailing: Icon(Icons.play_arrow, color: theme.text),
-                                    onTap: () => _startInstance(context, name),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  );
-                },
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: _activeInstance == null
+                    ? InstanceListView(
+                        instanceManager: widget.instanceManager,
+                        onStartInstance: _startInstance,
+                      )
+                    : InstanceOutputView(
+                        instanceName: _activeInstance!,
+                        output: _output,
+                        onClose: () => setState(() => _activeInstance = null),
+                      ),
               ),
             ),
           ),
 
-          // ─────────────────────────────────────────────
           // TOP BAR
-          // ─────────────────────────────────────────────
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             height: topBarHeight,
-            child: Container(
-              color: Colors.transparent,
-              child: Center(
-                child: SizedBox(
-                  width: 200,
-                  height: 200,
-                  child: Image.asset(
-                    'assets/icons/title.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
+            child: Center(
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: Image.asset('assets/icons/title.png', fit: BoxFit.contain),
               ),
             ),
           ),
 
-          // ─────────────────────────────────────────────
           // LEFT SIDEBAR
-          // ─────────────────────────────────────────────
           Positioned(
             top: topBarHeight,
             left: 0,
@@ -135,17 +87,19 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 20),
 
+                  // Home Button
                   RoundIconButton(
                     icon: Icon(Icons.home, color: theme.text2),
-                    onPressed: () {},
+                    onPressed: () => setState(() => _activeInstance = null),
                     normalColor: theme.components4,
                     hoverColor: theme.components5,
                   ),
 
+                  // Add Button
                   RoundIconButton(
                     icon: Icon(Icons.add, color: theme.text2),
                     onPressed: () async {
-                      await instanceManager.createInstance(
+                      await widget.instanceManager.createInstance(
                         "Instance_${DateTime.now().millisecondsSinceEpoch}",
                       );
                     },
@@ -153,11 +107,13 @@ class HomeScreen extends StatelessWidget {
                     hoverColor: theme.components5,
                   ),
 
+                  // Divider
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Divider(color: theme.text, thickness: 1, height: 24),
                   ),
 
+                  // Checkroom Button
                   RoundIconButton(
                     icon: Icon(Icons.checkroom, color: theme.text2),
                     onPressed: () {},
@@ -165,11 +121,13 @@ class HomeScreen extends StatelessWidget {
                     hoverColor: theme.components5,
                   ),
 
+                  // Divider
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Divider(color: theme.text, thickness: 1, height: 24),
                   ),
 
+                  // Settings Button
                   RoundIconButton(
                     icon: Icon(Icons.settings, color: theme.text2),
                     onPressed: () {},
@@ -177,6 +135,7 @@ class HomeScreen extends StatelessWidget {
                     hoverColor: theme.components5,
                   ),
 
+                  // Discord Button
                   RoundIconButton(
                     icon: Icon(Icons.discord, color: theme.text2),
                     onPressed: () {},
@@ -192,73 +151,27 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // 🔹 Instance Start Logik + Dialog
-  // ─────────────────────────────────────────────
-  Future<void> _startInstance(BuildContext context, String name) async {
-    final theme = ThemeManager.currentTheme.value;
-    final lastLine = ValueNotifier<String>("Starting instance '$name'...");
-
-    // Fortschrittsdialog anzeigen
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: theme.background,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: SizedBox(
-          width: 300,
-          child: ValueListenableBuilder<String>(
-            valueListenable: lastLine,
-            builder: (context, line, _) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: theme.text),
-                  const SizedBox(height: 20),
-                  Text(
-                    line,
-                    style: TextStyle(color: theme.text, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
-    );
+  Future<void> _startInstance(String name) async {
+    setState(() {
+      _activeInstance = name;
+      _output.value = "Starting instance '$name'...\n";
+    });
 
     try {
-      final process = await instanceManager.startInstanceWithOutput(name);
+      final process = await widget.instanceManager.startInstanceWithOutput(name);
 
-      // stdout → UI
       process.stdout.transform(SystemEncoding().decoder).listen((line) {
-        lastLine.value = line.trim();
+        _output.value += line;
       });
 
-      // stderr → UI (rot markiert)
       process.stderr.transform(SystemEncoding().decoder).listen((line) {
-        lastLine.value = "⚠️ ${line.trim()}";
+        _output.value += line;
       });
 
       final exitCode = await process.exitCode;
-      Navigator.of(context).pop(); // Dialog schließen
-
-      if (exitCode == 0) {
-        _showSnack(context, "Instance '$name' exited successfully.");
-      } else {
-        _showSnack(context, "Instance crashed (code $exitCode)");
-      }
+      _output.value += "\nInstance exited with code $exitCode\n";
     } catch (e) {
-      Navigator.of(context).pop();
-      _showSnack(context, "Error starting instance: $e");
+      _output.value += "\nError starting instance: $e\n";
     }
-  }
-
-  void _showSnack(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
   }
 }
