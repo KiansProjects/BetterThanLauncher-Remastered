@@ -183,10 +183,10 @@ class InstanceManager {
 
     final gameArgs = [
       '--username', _authenticator.playerName,
+      '--uuid', _authenticator.playerUuid,
       if (_authenticator.accessToken != 'no-token') '--session', _authenticator.accessToken,
       '--gameDir', instanceDir.path,
       '--assetsDir', p.join(instanceDir.path, 'assets'),
-      '--title', 'custom',
     ];
 
     final javaArgs = [

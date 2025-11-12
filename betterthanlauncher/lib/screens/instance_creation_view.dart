@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../themes/theme_manager.dart';
 import '../service/instance_manager.dart';
 import '../service/version_manager.dart';
+import '../widgets/app_card_decoration.dart';
 
 class InstanceCreationView extends StatefulWidget {
   final InstanceManager instanceManager;
@@ -72,12 +73,8 @@ class _InstanceCreationViewState extends State<InstanceCreationView> {
     final theme = ThemeManager.currentTheme.value;
 
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.borderColor, width: 2),
-      ),
+      padding: const EdgeInsets.all(16), // identisch zu InstanceDetailView
+      decoration: appCardDecoration(theme), // 👈 gleicher Stil
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

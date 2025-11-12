@@ -70,6 +70,8 @@ flutter:
     - assets/icons/title.png
     - assets/icons/instance_icon.png
 
+    - assets/backgrounds/background.png
+
     - assets/scripts/Authenticate.java
     - assets/scripts/JarMerger.java
 

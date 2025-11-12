@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../themes/theme_manager.dart';
-import '../service/instance_manager.dart';
 import 'instance_output_view.dart';
+import '../service/instance_manager.dart';
+import '../themes/theme_manager.dart';
+import '../widgets/app_card_decoration.dart';
 
 class InstanceDetailView extends StatefulWidget {
   final String instanceName;
@@ -100,11 +101,7 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.borderColor, width: 2),
-      ),
+      decoration: appCardDecoration(theme),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../components/round_icon_button.dart';
 import '../components/top_left_border_painter.dart';
@@ -22,6 +23,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ValueNotifier<String> _output = ValueNotifier<String>("");
   String? _activeInstance;
+  ui.Image? _backgroundImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBackgroundImage();
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    final data = await DefaultAssetBundle.of(context).load('assets/backgrounds/background.png');
+    final bytes = data.buffer.asUint8List();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    setState(() {
+      _backgroundImage = frame.image;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderColor: theme.borderColor,
                 borderWidth: 2,
                 radius: 20,
+                overlayImage: _backgroundImage,
+                imageOpacity: 0.3,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -89,18 +109,24 @@ class _HomeScreenState extends State<HomeScreen> {
         onShowDetails: (name) => setState(() => _activeInstance = name),
       );
     } else if (_activeInstance == "create") {
-      return InstanceCreationView(
-        instanceManager: widget.instanceManager,
-        versionManager: widget.versionManager,
-        onCancel: () => setState(() => _activeInstance = null),
-        onCreated: () => setState(() => _activeInstance = null),
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: InstanceCreationView(
+          instanceManager: widget.instanceManager,
+          versionManager: widget.versionManager,
+          onCancel: () => setState(() => _activeInstance = null),
+          onCreated: () => setState(() => _activeInstance = null),
+        ),
       );
     } else {
-      return InstanceDetailView(
-        instanceName: _activeInstance!,
-        instanceManager: widget.instanceManager,
-        output: _output,
-        onClose: () => setState(() => _activeInstance = null),
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: InstanceDetailView(
+          instanceName: _activeInstance!,
+          instanceManager: widget.instanceManager,
+          output: _output,
+          onClose: () => setState(() => _activeInstance = null),
+        ),
       );
     }
   }
@@ -112,7 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           const SizedBox(height: 20),
-
           RoundIconButton(
             icon: Icon(Icons.home, color: theme.highlightText),
             onPressed: () => setState(() => _activeInstance = null),
@@ -122,7 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltipBackgroundColor: theme.borderColor,
             tooltipTextColor: theme.primaryText,
           ),
-
           RoundIconButton(
             icon: Icon(Icons.add, color: theme.highlightText),
             onPressed: () => setState(() => _activeInstance = "create"),
@@ -132,12 +156,10 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltipBackgroundColor: theme.borderColor,
             tooltipTextColor: theme.primaryText,
           ),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Divider(color: theme.primaryText, thickness: 1, height: 24),
           ),
-
           RoundIconButton(
             icon: Icon(Icons.checkroom, color: theme.highlightText),
             onPressed: () {},
@@ -147,12 +169,10 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltipBackgroundColor: theme.borderColor,
             tooltipTextColor: theme.primaryText,
           ),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Divider(color: theme.primaryText, thickness: 1, height: 24),
           ),
-
           RoundIconButton(
             icon: Icon(Icons.settings, color: theme.highlightText),
             onPressed: () {},
@@ -162,7 +182,6 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltipBackgroundColor: theme.borderColor,
             tooltipTextColor: theme.primaryText,
           ),
-
           RoundIconButton(
             icon: Icon(Icons.discord, color: theme.highlightText),
             onPressed: () {},
