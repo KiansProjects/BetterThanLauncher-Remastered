@@ -8,7 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import 'themes/theme_manager.dart';
 import 'screens/build_screen.dart';
 import 'screens/home_screen.dart';
-import 'service/authenticate.dart';
+import 'service/authenticator.dart';
 import 'service/instance_manager.dart';
 import 'service/library_manager.dart';
 import 'service/version_manager.dart';
@@ -38,6 +38,7 @@ void main() async {
   final file = File(tempIconPath);
   await file.writeAsBytes(bytes.buffer.asUint8List());
 
+  await windowManager.setMinimumSize(const Size(1024, 640));
   await windowManager.setSize(const Size(1280, 720));
   await windowManager.center();
   await windowManager.setTitle('BetterThanLauncher');
@@ -54,6 +55,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final String prefix = '[SplashScreen]';
+
   @override
   void initState() {
     super.initState();
@@ -62,9 +65,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _runSetup() async {
     try {
-      print('Setting up app folders...');
+      print('$prefix Setting up app folders...');
       final dirs = await setupAppFolders();
-      print('Folders ready.');
+      print('$prefix Folders ready.');
 
       final launcherDir = dirs[0];
       final instancesDir = dirs[1];
@@ -72,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
       final versionsDir = dirs[3];
       final scriptsDir = dirs[4];
 
-      print('Initializing LibraryManager...');
+      print('$prefix Initializing LibraryManager...');
       final libManager = LibraryManager();
       await libManager.init(libDirPath: librariesDir.path);
 
@@ -157,13 +160,12 @@ class _SplashScreenState extends State<SplashScreen> {
         version: '2.0.7',
       );
 
-      print('Library downloads complete.');
-
+      print('$prefix Initializing VersionManager...');
       final versManager = VersionManager();
       await versManager.init(versionsDirPath: versionsDir.path);
       await versManager.downloadAllVersions();
-      print('Versions downloaded.');
 
+      print('$prefix Initializing JavaFileCompiler...');
       final compiler = JavaFileCompiler();
       await compiler.init(scriptsDirPath: scriptsDir.path);
 
@@ -175,8 +177,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
       await compiler.compileClass('Authenticate.java');
       await compiler.compileClass('JarMerger.java');
-      print('Java compilation done.');
 
+      print('$prefix Initializing Authenticator...');
       final auth = Authenticator();
       await auth.init(profileDirPath: launcherDir.path, scriptsDirPath: scriptsDir.path);
 
@@ -190,20 +192,19 @@ class _SplashScreenState extends State<SplashScreen> {
         await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-core', version: '2.20.0'),
       ]);
 
-      print('Initializing InstanceManager...');
+      print('$prefix Initializing InstanceManager...');
       final instManager = InstanceManager();
-      await instManager.init(instancesDirPath: instancesDir.path, scriptsDirPath: scriptsDir.path, libraryManager: libManager, versionManager: versManager);
+      await instManager.init(instancesDirPath: instancesDir.path, scriptsDirPath: scriptsDir.path, authenticator: auth, libraryManager: libManager, versionManager: versManager);
 
       await auth.authenticateFlow();
-      print('Authentication complete.');
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => BetterThanLauncher(instanceManager: instManager)),
+          MaterialPageRoute(builder: (_) => BetterThanLauncher(instanceManager: instManager, versionManager: versManager,)),
         );
       }
     } catch (e) {
-      print('Setup failed: $e');
+      print('$prefix Setup failed: $e');
     }
   }
 
@@ -232,10 +233,12 @@ Future<List<Directory>> setupAppFolders() async {
 
 class BetterThanLauncher extends StatelessWidget {
   final InstanceManager instanceManager;
+  final VersionManager versionManager;
 
   const BetterThanLauncher({
     super.key,
     required this.instanceManager,
+    required this.versionManager,
   });
 
   Future<String> getJavaVersion() async {
@@ -256,15 +259,15 @@ class BetterThanLauncher extends StatelessWidget {
           title: 'BetterThanLauncher',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
-            scaffoldBackgroundColor: theme.background,
-            primaryColor: theme.components4,
-            cardColor: theme.components,
+            scaffoldBackgroundColor: theme.mainBackground,
+            primaryColor: theme.buttonNormal,
+            cardColor: theme.cardBackground,
             textTheme: TextTheme(
-              bodyLarge: TextStyle(color: theme.text),
-              bodyMedium: TextStyle(color: theme.text2),
+              bodyLarge: TextStyle(color: theme.primaryText),
+              bodyMedium: TextStyle(color: theme.highlightText),
             ),
           ),
-          home: HomeScreen(instanceManager: instanceManager),
+          home: HomeScreen(instanceManager: instanceManager, versionManager: versionManager,),
         );
       },
     );

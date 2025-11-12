@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
+import 'package:betterthanlauncher/service/authenticator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'library_manager.dart';
@@ -13,27 +13,43 @@ class InstanceManager {
   final ValueNotifier<List<Directory>> instances = ValueNotifier([]);
   late Directory _instancesRootDir;
   late Directory _scriptsDir;
+  late Authenticator _authenticator;
   late LibraryManager _libraryManager;
   late VersionManager _versionManager;
+
+  final String prefix = '[InstanceManager]';
 
   Future<void> init({
     required String instancesDirPath,
     required String scriptsDirPath,
+    required Authenticator authenticator,
     required LibraryManager libraryManager,
     required VersionManager versionManager,
   }) async {
     _instancesRootDir = Directory(instancesDirPath);
     _scriptsDir = Directory(scriptsDirPath);
 
+    _authenticator = authenticator;
     _libraryManager = libraryManager;
     _versionManager = versionManager;
 
     if (!await _instancesRootDir.exists()) {
       await _instancesRootDir.create(recursive: true);
+      print('$prefix Instances root directory created at ${_instancesRootDir.path}');
     }
 
-    instances.value =
-        _instancesRootDir.listSync().whereType<Directory>().toList();
+    final validDirs = <Directory>[];
+
+    await for (final entity in _instancesRootDir.list()) {
+      if (entity is Directory) {
+        final clientJar = File(p.join(entity.path, 'client.jar'));
+        if (await clientJar.exists()) {
+          validDirs.add(entity);
+        }
+      }
+    }
+
+    instances.value = validDirs;
 
     if (instances.value.isEmpty) {
       await createInstance("example_instance");
@@ -47,12 +63,12 @@ class InstanceManager {
     final newInstanceDir = Directory(p.join(_instancesRootDir.path, name));
 
     if (await newInstanceDir.exists()) {
-      print("Instance $name already exists.");
+      print('$prefix Instance $name already exists.');
       return;
     }
 
+    print('$prefix Creating instance $name...');
     await newInstanceDir.create(recursive: true);
-    print("Creating instance $name...");
 
     final versions = await _versionManager.getVersions();
     final btaVersion = versions.lastWhere(
@@ -60,17 +76,13 @@ class InstanceManager {
       orElse: () => throw Exception('No BTA versions found.'),
     );
     final btaJarPath = await _versionManager.getVersionPath(btaVersion);
-    if (btaJarPath == null) {
-      throw Exception('BTA JAR not found.');
-    }
+    if (btaJarPath == null) throw Exception('BTA JAR not found.');
 
     final betaJarPath = await _versionManager.getVersionPath('b1.7.3');
-    if (betaJarPath == null) {
-      throw Exception('Minecraft Beta JAR not found.');
-    }
+    if (betaJarPath == null) throw Exception('Minecraft Beta JAR not found.');
 
     final mergedJarPath = p.join(newInstanceDir.path, 'client.jar');
-    print('Merging $mergedJarPath');
+    print('$prefix Merging JAR into $mergedJarPath');
 
     final result = await Process.run(
       'java',
@@ -78,24 +90,22 @@ class InstanceManager {
     );
 
     if (result.exitCode != 0) {
-      print('Jar merge failed: ${result.stderr}');
-      throw Exception('Failed to merge jars.');
+      print('$prefix Jar merge failed:\n${result.stderr}');
     }
 
-    print('Merged JAR created at $mergedJarPath');
-
+    print('$prefix Merged JAR created at $mergedJarPath');
     instances.value = [...instances.value, newInstanceDir];
   }
 
   Future<Process> startInstanceWithOutput(String name) async {
     final instanceDir = Directory(p.join(_instancesRootDir.path, name));
     if (!await instanceDir.exists()) {
-      throw Exception("Instance '$name' does not exist.");
+      print("$prefix Instance '$name' does not exist.");
     }
 
     final clientJar = File(p.join(instanceDir.path, 'client.jar'));
     if (!await clientJar.exists()) {
-      throw Exception("client.jar not found in instance '$name'.");
+      print("$prefix client.jar not found in instance '$name'.");
     }
 
     final lwjglModules = [
@@ -129,7 +139,6 @@ class InstanceManager {
         version: '3.3.3',
       );
       lwjglLibs.add(jar);
-
       for (final suffix in nativeSuffixes) {
         final nativeJar = await _libraryManager.getLibraryPath(
           groupId: 'org.lwjgl',
@@ -141,11 +150,7 @@ class InstanceManager {
       }
     }
 
-    final log4jModules = [
-      'log4j-api',
-      'log4j-core',
-      'log4j-slf4j2-impl',
-    ];
+    final log4jModules = ['log4j-api', 'log4j-core', 'log4j-slf4j2-impl'];
     final log4jLibs = await Future.wait(log4jModules.map((m) => _libraryManager.getLibraryPath(
           groupId: 'org.apache.logging.log4j',
           artifactId: m,
@@ -177,10 +182,11 @@ class InstanceManager {
     ];
 
     final gameArgs = [
-      '--username', 'Player123',
+      '--username', _authenticator.playerName,
+      if (_authenticator.accessToken != 'no-token') '--session', _authenticator.accessToken,
       '--gameDir', instanceDir.path,
       '--assetsDir', p.join(instanceDir.path, 'assets'),
-      '--version', 'custom',
+      '--title', 'custom',
     ];
 
     final javaArgs = [
@@ -190,8 +196,8 @@ class InstanceManager {
       'net.minecraft.client.Minecraft',
       ...gameArgs,
     ];
-    
-    // print('Starting instance with: java ${javaArgs.join(' ')}');
+
+    print('$prefix Starting instance $name...');
 
     final process = await Process.start(
       'java',
@@ -200,28 +206,28 @@ class InstanceManager {
       mode: ProcessStartMode.normal,
     );
 
-    process.stdout
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((line) {
-          if (line.trim().isNotEmpty) {
-            print(line);
-          }
-        });
-
-    process.stderr
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((line) {
-          if (line.trim().isNotEmpty) {
-            print(line);
-          }
-        });
-
-    process.exitCode.then((code) {
-      print('Process exited with code $code');
-    });
-
     return process;
+  }
+
+  String? getInstancePath(String name) {
+    final instanceDir = instances.value.firstWhere(
+      (d) => p.basename(d.path) == name
+    );
+    return instanceDir.path;
+  }
+
+  /// Deletes an instance by name and updates the instances list
+  Future<void> deleteInstance(String name) async {
+    final instanceDir = instances.value.firstWhere(
+      (d) => p.basename(d.path) == name
+    );
+
+    try {
+      await instanceDir.delete(recursive: true);
+      instances.value = instances.value.where((d) => d != instanceDir).toList();
+      print('$prefix Instance $name deleted successfully.');
+    } catch (e) {
+      print('$prefix Failed to delete instance $name: $e');
+    }
   }
 }

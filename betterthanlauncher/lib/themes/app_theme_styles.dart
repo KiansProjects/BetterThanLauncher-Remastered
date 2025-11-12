@@ -1,28 +1,33 @@
 import 'package:flutter/material.dart';
 import 'app_theme_data.dart';
-import 'app_themes.dart';
 
 class AppThemeStyles {
   static const AppThemeData dark = AppThemeData(
-    background: Color(0xFF16181C),
-    components: Color(0xFF26292F),
-    components2: Color(0xFF434956),
-    components3: Color(0xFFA7B0C0),
-    components4: Color(0xFF2563EB),
-    components5: Color(0xFF1D4ED8),
-    text: Color(0xFFA7B0C0),
-    text2: Color(0xFFFFFFFF),
+    mainBackground: Color(0xFF16181C),
+    cardBackground: Color(0xFF26292F),
+    borderColor: Color(0xFF434956),
+    secondaryText: Color(0xFFA7B0C0),
+    buttonNormal: Color(0xFF2563EB),
+    buttonHover: Color(0xFF1D4ED8),
+    primaryText: Color(0xFFA7B0C0),
+    highlightText: Color(0xFFFFFFFF),
+    errorText: Color(0xFFEF4444),
+    consoleText: Color(0xFFFFFFFF),
+    consoleBackground: Color(0xFF000000),
   );
 
   static const AppThemeData light = AppThemeData(
-    background: Color(0xFFFFFFFF),
-    components: Color(0xFFF9FAFB),
-    components2: Color(0xFFE9ECEF),
-    components3: Color(0xFF374151),
-    components4: Color(0xFFCBD5E1),
-    components5: Color(0xFF94A3B8),
-    text: Color(0xFF6B7280),
-    text2: Color(0xFF111111),
+    mainBackground: Color(0xFFFFFFFF),
+    cardBackground: Color(0xFFF9FAFB),
+    borderColor: Color(0xFFE9ECEF),
+    secondaryText: Color(0xFF374151),
+    buttonNormal: Color(0xFFCBD5E1),
+    buttonHover: Color(0xFF94A3B8),
+    primaryText: Color(0xFF6B7280),
+    highlightText: Color(0xFF111111),
+    errorText: Color(0xFFB91C1C),
+    consoleText: Color(0xFFFFFFFF),
+    consoleBackground: Color(0xFF000000),
   );
 
   static AppThemeData getTheme(AppThemes theme) {

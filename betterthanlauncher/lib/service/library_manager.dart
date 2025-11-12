@@ -9,15 +9,17 @@ class LibraryManager {
 
   late Directory _librariesDir;
 
+  final String prefix = '[LibraryManager]';
+
   Future<void> init({required String libDirPath}) async {
     _librariesDir = Directory(libDirPath);
 
     if (!await _librariesDir.exists()) {
-      print('Creating library directory: $libDirPath');
+      print('$prefix Creating library directory: $libDirPath');
       await _librariesDir.create(recursive: true);
-      print('Library directory created.');
+      print('$prefix Library directory created.');
     } else {
-      print('Using existing library directory: $libDirPath');
+      print('$prefix Using existing library directory: $libDirPath');
     }
   }
 
@@ -25,7 +27,7 @@ class LibraryManager {
     required String groupId,
     required String artifactId,
     required String version,
-    String? suffix, // optional suffix for natives
+    String? suffix,
     String baseUrl = 'https://repo1.maven.org/maven2',
   }) async {
     final groupPath = groupId.replaceAll('.', '/');
@@ -36,28 +38,28 @@ class LibraryManager {
 
     final libDir = Directory(p.join(_librariesDir.path, groupPath, artifactId, version));
     if (!await libDir.exists()) {
-      print('Creating directory for $artifactId:$version');
+      print('$prefix Creating directory for $artifactId:$version');
       await libDir.create(recursive: true);
     }
 
     final outFile = File(p.join(libDir.path, fileName));
 
     if (await outFile.exists()) {
-      print('Library already exists: $fileName');
+      print('$prefix Library already exists: $fileName');
       return outFile;
     }
 
-    print('Downloading library: $artifactId:$version');
-    print('From URL: $url');
+    print('$prefix Downloading library: $artifactId:$version');
+    print('$prefix From URL: $url');
 
     final response = await http.get(Uri.parse(url));
     if (response.statusCode != 200) {
-      print('Failed to download library (HTTP ${response.statusCode})');
-      throw Exception('Failed to download library: $url');
+      print('$prefix Failed to download library (HTTP ${response.statusCode})');
+      throw Exception('$prefix Failed to download library: $url');
     }
 
     await outFile.writeAsBytes(response.bodyBytes);
-    print('Download complete: ${outFile.path}');
+    print('$prefix Download complete: ${outFile.path}');
 
     return outFile;
   }
@@ -66,7 +68,7 @@ class LibraryManager {
     required String groupId,
     required String artifactId,
     required String version,
-    String? suffix, // optional suffix
+    String? suffix,
   }) async {
     final groupPath = groupId.replaceAll('.', '/');
     final fileName = suffix != null
@@ -75,7 +77,7 @@ class LibraryManager {
     final file = File(p.join(_librariesDir.path, groupPath, artifactId, version, fileName));
 
     final exists = await file.exists();
-    print('Checking if library exists: $fileName → ${exists ? "YES" : "NO"}');
+    print('$prefix Checking if library exists: $fileName → ${exists ? "YES" : "NO"}');
     return exists;
   }
 
@@ -83,7 +85,7 @@ class LibraryManager {
     required String groupId,
     required String artifactId,
     required String version,
-    String? suffix, // optional suffix
+    String? suffix,
   }) async {
     final groupPath = groupId.replaceAll('.', '/');
     final fileName = suffix != null
@@ -92,7 +94,7 @@ class LibraryManager {
     final file = File(p.join(_librariesDir.path, groupPath, artifactId, version, fileName));
 
     if (!await file.exists()) {
-      print('Library not found locally: $fileName');
+      print('$prefix Library not found locally: $fileName');
     }
 
     return file;
@@ -111,7 +113,7 @@ class LibraryManager {
     final file = File(p.join(_librariesDir.path, groupPath, artifactId, version, fileName));
 
     if (!await file.exists()) {
-      print('Library not found locally: $fileName');
+      print('$prefix Library not found locally: $fileName');
     }
     return file.path;
   }

@@ -4,23 +4,20 @@ import 'package:path/path.dart' as p;
 
 class JavaFileCompiler {
   late Directory _scriptsDir;
-
   final List<String> _libraryPaths = [];
+
+  final String prefix = '[JavaCompiler]';
 
   Future<void> init({required String scriptsDirPath}) async {
     _scriptsDir = Directory(scriptsDirPath);
     if (!await _scriptsDir.exists()) {
       await _scriptsDir.create(recursive: true);
+      print('$prefix Scripts directory created at ${_scriptsDir.path}');
     }
   }
 
-  void addLibraryPath(String jarPath) {
-    _libraryPaths.add(jarPath);
-  }
-
-  void addLibraryPaths(List<String> jarPaths) {
-    _libraryPaths.addAll(jarPaths);
-  }
+  void addLibraryPath(String jarPath) => _libraryPaths.add(jarPath);
+  void addLibraryPaths(List<String> jarPaths) => _libraryPaths.addAll(jarPaths);
 
   Future<void> compileClass(String javaFileName) async {
     final javaFile = File(p.join(_scriptsDir.path, javaFileName));
@@ -30,7 +27,7 @@ class JavaFileCompiler {
       final bytes = data.buffer.asUint8List();
       await javaFile.writeAsBytes(bytes);
     } catch (e) {
-      throw Exception('$javaFileName not found in assets.');
+      print('$prefix Error: $javaFileName not found in assets.');
     }
 
     String? classpath;
@@ -47,12 +44,14 @@ class JavaFileCompiler {
     final result = await Process.run('javac', args);
 
     if (result.exitCode != 0) {
-      print('Java compilation failed:\n${result.stderr}');
-      throw Exception('Failed to compile $javaFileName');
+      print('$prefix Java compilation failed for $javaFileName:\n${result.stderr}');
+    } else {
+      print('$prefix Successfully compiled $javaFileName');
     }
 
     if (await javaFile.exists()) {
       await javaFile.delete();
+      print('$prefix Temporary file $javaFileName deleted.');
     }
   }
 }

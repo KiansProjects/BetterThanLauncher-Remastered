@@ -10,13 +10,13 @@ class BuildScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = ThemeManager.currentTheme.value;
     return Scaffold(
-      backgroundColor: theme.background,
+      backgroundColor: theme.mainBackground,
       body: Center(
         child: Container(
           width: 300,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: theme.components,
+            color: theme.cardBackground,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -29,14 +29,14 @@ class BuildScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: theme.text),
+              CircularProgressIndicator(color: theme.primaryText),
               const SizedBox(height: 20),
               ValueListenableBuilder<String>(
                 valueListenable: lastLine,
                 builder: (context, value, _) {
                   return Text(
                     value,
-                    style: TextStyle(color: theme.text, fontSize: 14),
+                    style: TextStyle(color: theme.primaryText, fontSize: 14),
                     textAlign: TextAlign.center,
                   );
                 },
