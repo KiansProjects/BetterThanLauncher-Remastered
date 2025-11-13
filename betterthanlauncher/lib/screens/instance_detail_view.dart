@@ -8,14 +8,14 @@ import '../widgets/app_card_decoration.dart';
 class InstanceDetailView extends StatefulWidget {
   final String instanceName;
   final InstanceManager instanceManager;
-  final ValueNotifier<String> output;
+  final ValueNotifier<List<String>> logLines;
   final VoidCallback onClose;
 
   const InstanceDetailView({
     super.key,
     required this.instanceName,
     required this.instanceManager,
-    required this.output,
+    required this.logLines,
     required this.onClose,
   });
 
@@ -27,11 +27,50 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
   bool _showConsole = false;
   bool _isDeleting = false;
 
+  Process? _process;
+
   void _toggleView() => setState(() => _showConsole = !_showConsole);
+
+  Future<void> _startInstance() async {
+    if (_process != null) return;
+
+    widget.logLines.value = ["Starting instance ${widget.instanceName}...\n"];
+
+    final p = await widget.instanceManager.startInstanceWithOutput(widget.instanceName);
+    _process = p;
+
+    p.stdout.transform(SystemEncoding().decoder).listen((line) {
+      widget.logLines.value = [...widget.logLines.value, line];
+    });
+
+    p.stderr.transform(SystemEncoding().decoder).listen((line) {
+      widget.logLines.value = [...widget.logLines.value, line];
+    });
+
+    p.exitCode.then((code) {
+      widget.logLines.value = [
+        ...widget.logLines.value,
+        "\nInstance exited with code $code\n"
+      ];
+      setState(() => _process = null);
+    });
+
+    setState(() {});
+  }
+
+  Future<void> _stopInstance() async {
+    if (_process == null) return;
+
+    widget.logLines.value = [...widget.logLines.value, "\nStopping instance...\n"];
+    _process!.kill(ProcessSignal.sigkill);
+
+    setState(() => _process = null);
+  }
 
   Future<void> _openFolder() async {
     final path = widget.instanceManager.getInstancePath(widget.instanceName);
     if (path == null) return;
+
     if (await Directory(path).exists()) {
       if (Platform.isWindows) {
         await Process.start('explorer', [path]);
@@ -59,39 +98,16 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
     if (confirmed != true) return;
 
     setState(() => _isDeleting = true);
+
     try {
       await widget.instanceManager.deleteInstance(widget.instanceName);
       widget.onClose();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error deleting instance: $e"),
-          backgroundColor: ThemeManager.currentTheme.value.errorText,
-        ),
+        SnackBar(content: Text("Error deleting: $e")),
       );
     } finally {
       setState(() => _isDeleting = false);
-    }
-  }
-
-  Future<void> _startInstance() async {
-    widget.output.value = "Starting instance '${widget.instanceName}'...\n";
-
-    try {
-      final process = await widget.instanceManager.startInstanceWithOutput(widget.instanceName);
-
-      process.stdout.transform(SystemEncoding().decoder).listen((line) {
-        widget.output.value += line;
-      });
-
-      process.stderr.transform(SystemEncoding().decoder).listen((line) {
-        widget.output.value += line;
-      });
-
-      final exitCode = await process.exitCode;
-      widget.output.value += "\nInstance exited with code $exitCode\n";
-    } catch (e) {
-      widget.output.value += "\nError starting instance: $e\n";
     }
   }
 
@@ -117,53 +133,48 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
                   ),
                 ),
               ),
+
+              IconButton(
+                icon: Icon(
+                  _process == null ? Icons.play_arrow : Icons.stop,
+                  color: theme.highlightText,
+                ),
+                tooltip: _process == null ? "Start Instance" : "Stop Instance",
+                onPressed: _process == null ? _startInstance : _stopInstance,
+              ),
+
+              IconButton(
+                icon: Icon(_showConsole ? Icons.view_in_ar : Icons.terminal, color: theme.highlightText),
+                tooltip: _showConsole ? "Show Main Area" : "Show Console",
+                onPressed: _toggleView,
+              ),
+
               IconButton(
                 icon: Icon(Icons.folder_open, color: theme.highlightText),
                 tooltip: "Open Folder",
                 onPressed: _openFolder,
               ),
-              IconButton(
-                icon: Icon(
-                  _showConsole ? Icons.view_in_ar : Icons.terminal,
-                  color: theme.highlightText,
-                ),
-                tooltip: _showConsole ? "Show Main Area" : "Show Console",
-                onPressed: _toggleView,
-              ),
+
               IconButton(
                 icon: Icon(Icons.delete, color: theme.errorText),
                 tooltip: "Delete Instance",
                 onPressed: _isDeleting ? null : _deleteInstance,
               ),
-              IconButton(
-                icon: Icon(Icons.play_arrow, color: theme.highlightText),
-                tooltip: "Start Instance",
-                onPressed: _startInstance,
-              ),
             ],
           ),
+
           const SizedBox(height: 12),
 
           Expanded(
             child: _showConsole
-                ? SizedBox.expand(
-                    child: InstanceOutputView(output: widget.output),
-                  )
-                : Container(
-                    decoration: BoxDecoration(
-                      color: theme.cardBackground,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.borderColor, width: 2),
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    child: Center(
-                      child: Text(
-                        "Main Area / Mods (WIP)",
-                        style: TextStyle(color: theme.secondaryText),
-                      ),
+                ? InstanceOutputView(logLines: widget.logLines)
+                : Center(
+                    child: Text(
+                      "Main Area / Mods (WIP)",
+                      style: TextStyle(color: theme.secondaryText),
                     ),
                   ),
-          )
+          ),
         ],
       ),
     );

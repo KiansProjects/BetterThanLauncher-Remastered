@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -21,7 +22,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ValueNotifier<String> _output = ValueNotifier<String>("");
+  final ValueNotifier<List<String>> _logLines = ValueNotifier([]);
+
   String? _activeInstance;
   ui.Image? _backgroundImage;
 
@@ -124,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: InstanceDetailView(
           instanceName: _activeInstance!,
           instanceManager: widget.instanceManager,
-          output: _output,
+          logLines: _logLines,
           onClose: () => setState(() => _activeInstance = null),
         ),
       );
@@ -199,24 +201,47 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startInstance(String name) async {
     setState(() {
       _activeInstance = name;
-      _output.value = "Starting instance '$name'...\n";
+      _logLines.value = ["Starting instance '$name'..."];
     });
 
     try {
       final process = await widget.instanceManager.startInstanceWithOutput(name);
 
-      process.stdout.transform(SystemEncoding().decoder).listen((line) {
-        _output.value += line;
-      });
+      final buffer = <String>[];
+      Timer? flushTimer;
 
-      process.stderr.transform(SystemEncoding().decoder).listen((line) {
-        _output.value += line;
-      });
+      const maxLines = 500;
+
+      void flush() {
+        if (buffer.isEmpty) return;
+
+        final updated = [..._logLines.value, ...buffer];
+        buffer.clear();
+        final trimmed = updated.length > maxLines
+            ? updated.sublist(updated.length - maxLines)
+            : updated;
+
+        _logLines.value = trimmed;
+        flushTimer = null;
+      }
+
+      void handle(String line) {
+        buffer.add(line.trimRight());
+        flushTimer ??= Timer(const Duration(milliseconds: 200), flush);
+      }
+
+      process.stdout
+          .transform(SystemEncoding().decoder)
+          .listen(handle);
+      process.stderr
+          .transform(SystemEncoding().decoder)
+          .listen(handle);
 
       final exitCode = await process.exitCode;
-      _output.value += "\nInstance exited with code $exitCode\n";
+      buffer.add("Instance exited with code $exitCode");
+      flush();
     } catch (e) {
-      _output.value += "\nError starting instance: $e\n";
+      _logLines.value = [..._logLines.value, "Error starting instance: $e"];
     }
   }
 }
