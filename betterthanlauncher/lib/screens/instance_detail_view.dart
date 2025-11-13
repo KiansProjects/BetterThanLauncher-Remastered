@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'instance_output_view.dart';
@@ -39,11 +40,19 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
     final p = await widget.instanceManager.startInstanceWithOutput(widget.instanceName);
     _process = p;
 
-    p.stdout.transform(SystemEncoding().decoder).listen((line) {
+    p.stdout
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) {
+      if (line.trim().isEmpty) return;
       widget.logLines.value = [...widget.logLines.value, line];
     });
 
-    p.stderr.transform(SystemEncoding().decoder).listen((line) {
+    p.stderr
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) {
+      if (line.trim().isEmpty) return;
       widget.logLines.value = [...widget.logLines.value, line];
     });
 
