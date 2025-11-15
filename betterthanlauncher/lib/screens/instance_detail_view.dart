@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'instance_output_view.dart';
 import '../service/instance_manager.dart';
 import '../themes/theme_manager.dart';
 import '../widgets/app_card_decoration.dart';
+import 'instance_output_view.dart';
+import 'instance_settings_view.dart';
 
 class InstanceDetailView extends StatefulWidget {
   final String instanceName;
@@ -25,23 +26,17 @@ class InstanceDetailView extends StatefulWidget {
 }
 
 class _InstanceDetailViewState extends State<InstanceDetailView> {
-  bool _showConsole = false;
-  bool _isDeleting = false;
-
   Process? _process;
-
-  void _toggleView() => setState(() => _showConsole = !_showConsole);
+  bool _isDeleting = false;
 
   Future<void> _startInstance() async {
     if (_process != null) return;
-
     widget.logLines.value = ["Starting instance ${widget.instanceName}...\n"];
-
     final p = await widget.instanceManager.startInstanceWithOutput(widget.instanceName);
     _process = p;
 
     p.stdout
-        .transform(utf8.decoder)
+        .transform(SystemEncoding().decoder)
         .transform(const LineSplitter())
         .listen((line) {
       if (line.trim().isEmpty) return;
@@ -49,7 +44,7 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
     });
 
     p.stderr
-        .transform(utf8.decoder)
+        .transform(SystemEncoding().decoder)
         .transform(const LineSplitter())
         .listen((line) {
       if (line.trim().isEmpty) return;
@@ -57,10 +52,7 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
     });
 
     p.exitCode.then((code) {
-      widget.logLines.value = [
-        ...widget.logLines.value,
-        "\nInstance exited with code $code\n"
-      ];
+      widget.logLines.value = [...widget.logLines.value, "\nInstance exited with code $code\n"];
       setState(() => _process = null);
     });
 
@@ -69,10 +61,8 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
 
   Future<void> _stopInstance() async {
     if (_process == null) return;
-
     widget.logLines.value = [...widget.logLines.value, "\nStopping instance...\n"];
     _process!.kill(ProcessSignal.sigkill);
-
     setState(() => _process = null);
   }
 
@@ -107,14 +97,11 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
     if (confirmed != true) return;
 
     setState(() => _isDeleting = true);
-
     try {
       await widget.instanceManager.deleteInstance(widget.instanceName);
       widget.onClose();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error deleting: $e")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error deleting: $e")));
     } finally {
       setState(() => _isDeleting = false);
     }
@@ -124,68 +111,86 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
   Widget build(BuildContext context) {
     final theme = ThemeManager.currentTheme.value;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: appCardDecoration(theme),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
+    return DefaultTabController(
+      length: 3,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: appCardDecoration(theme),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
                   widget.instanceName,
                   style: TextStyle(
                     color: theme.primaryText,
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                    fontSize: 22,
                   ),
                 ),
-              ),
-
-              IconButton(
-                icon: Icon(
-                  _process == null ? Icons.play_arrow : Icons.stop,
-                  color: theme.highlightText,
+                const Spacer(),
+                IconButton(
+                  icon: Icon(_process == null ? Icons.play_arrow : Icons.stop,
+                    color: theme.highlightText),
+                  onPressed: _process == null ? _startInstance : _stopInstance,
                 ),
-                tooltip: _process == null ? "Start Instance" : "Stop Instance",
-                onPressed: _process == null ? _startInstance : _stopInstance,
-              ),
+                IconButton(
+                  icon: Icon(Icons.folder_open, color: theme.highlightText),
+                  onPressed: _openFolder,
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete, color: theme.errorText),
+                  onPressed: _isDeleting ? null : _deleteInstance,
+                ),
+              ],
+            ),
 
-              IconButton(
-                icon: Icon(_showConsole ? Icons.view_in_ar : Icons.terminal, color: theme.highlightText),
-                tooltip: _showConsole ? "Show Main Area" : "Show Console",
-                onPressed: _toggleView,
-              ),
+            const SizedBox(height: 16),
 
-              IconButton(
-                icon: Icon(Icons.folder_open, color: theme.highlightText),
-                tooltip: "Open Folder",
-                onPressed: _openFolder,
-              ),
+            Divider(
+              height: 2,
+              thickness: 1,
+              color: theme.primaryText,
+            ),
 
-              IconButton(
-                icon: Icon(Icons.delete, color: theme.errorText),
-                tooltip: "Delete Instance",
-                onPressed: _isDeleting ? null : _deleteInstance,
-              ),
-            ],
-          ),
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 12),
-
-          Expanded(
-            child: _showConsole
-                ? InstanceOutputView(logLines: widget.logLines)
-                : Center(
-                    child: Text(
-                      "Main Area / Mods (WIP)",
-                      style: TextStyle(color: theme.secondaryText),
-                    ),
+            SizedBox(
+              width: 300,
+              child: PreferredSize(
+                preferredSize: const Size.fromHeight(48),
+                child: TabBar(
+                  indicator: BoxDecoration(
+                    color: theme.highlightText.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-          ),
-        ],
+                  labelColor: theme.highlightText,
+                  unselectedLabelColor: theme.secondaryText,
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    SizedBox(width: 80, height: 40, child: Center(child: Text("Content"))),
+                    SizedBox(width: 80, height: 40, child: Center(child: Text("Console"))),
+                    SizedBox(width: 80, height: 40, child: Center(child: Text("Settings"))),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: TabBarView(
+                children: [
+                  Center(child: Text("Main Area / Mods (WIP)")),
+                  InstanceOutputView(logLines: widget.logLines),
+                  InstanceSettingsView(instanceName: widget.instanceName),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    );
+    ); 
   }
 }

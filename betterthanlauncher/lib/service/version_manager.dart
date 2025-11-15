@@ -99,8 +99,6 @@ class VersionManager {
   }
 
   Future<List<String>> getVersions() async {
-    print('$prefix Listing available versions...');
-
     if (!await _versionsDir.exists()) {
       print('$prefix Versions directory not found: ${_versionsDir.path}');
       return [];

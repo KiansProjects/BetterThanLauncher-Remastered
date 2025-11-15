@@ -94,6 +94,7 @@ class _InstanceCreationViewState extends State<InstanceCreationView> {
               children: [
                 TextFormField(
                   controller: _nameController,
+                  maxLength: 32,
                   style: TextStyle(color: theme.primaryText),
                   cursorColor: theme.primaryText,
                   decoration: InputDecoration(
@@ -206,7 +207,7 @@ class _InstanceCreationViewState extends State<InstanceCreationView> {
   }) {
     return SizedBox(
       width: 100,
-      height: 40, // passend zu RoundIconButton
+      height: 40,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ButtonStyle(
