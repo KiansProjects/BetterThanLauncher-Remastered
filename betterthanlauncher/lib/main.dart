@@ -63,8 +63,84 @@ class _SplashScreenState extends State<SplashScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _runSetup());
   }
 
+  Future<bool> hasInternetConnection() async {
+    try {
+      final result = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 5));
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<int?> getJavaVersion() async {
+    try {
+      final result = await Process.run('java', ['-version']);
+      final output = (result.stderr as String).split('\n').first;
+
+      final regex = RegExp(r'version "(\d+)(\.\d+)*');
+      final match = regex.firstMatch(output);
+
+      if (match != null) {
+        return int.parse(match.group(1)!);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String getJdk17Url() {
+    if (Platform.isWindows) {
+      return "https://www.oracle.com/java/technologies/downloads/#jdk17-windows";
+    } else if (Platform.isMacOS) {
+      return "https://www.oracle.com/java/technologies/downloads/#jdk17-mac";
+    } else if (Platform.isLinux) {
+      return "https://www.oracle.com/java/technologies/downloads/#jdk17-linux";
+    }
+    return "https://www.oracle.com/java/technologies/downloads/";
+  }
+
+
+  Future<void> openJdk17Page() async {
+    final url = getJdk17Url();
+
+    if (Platform.isWindows) {
+      await Process.run('cmd', ['/c', 'start', url]);
+    } else if (Platform.isMacOS) {
+      await Process.run('open', [url]);
+    } else if (Platform.isLinux) {
+      await Process.run('xdg-open', [url]);
+    }
+  }
+
   Future<void> _runSetup() async {
     try {
+      print('$prefix Checking internet connection...');
+      if (!await hasInternetConnection()) {
+        print('$prefix No Internet Connection: The launcher requires an internet connection to continue. Please check your connection and restart the launcher.');
+        return;
+      }
+      print('$prefix Internet connection. Continuing setup...');
+
+      print('$prefix Checking Java installation...');
+      final javaVersion = await getJavaVersion();
+      final url = getJdk17Url();
+
+      if (javaVersion == null) {
+        print('$prefix Java Not Found: Java 17 or higher is required. Click the button below to download it from Oracle.\n$url');
+        await openJdk17Page();
+        return;
+      }
+
+      if (javaVersion < 17) {
+        print('$prefix Java Version Too Low: Detected Java version $javaVersion.\nJava 17 or higher is required.\n$url');
+        await openJdk17Page();
+        return;
+      }
+
+      print('$prefix Java OK ($javaVersion). Continuing setup...');
+
       print('$prefix Setting up app folders...');
       final dirs = await setupAppFolders();
       print('$prefix Folders ready.');
@@ -240,15 +316,6 @@ class BetterThanLauncher extends StatelessWidget {
     required this.instanceManager,
     required this.versionManager,
   });
-
-  Future<String> getJavaVersion() async {
-    try {
-      ProcessResult result = await Process.run('java', ['-version']);
-      return result.stderr.toString().split('\n')[0];
-    } catch (e) {
-      return 'Java not found or an error occurred: $e';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
