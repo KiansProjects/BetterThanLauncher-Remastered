@@ -150,20 +150,12 @@ class _HomeScreenState extends State<HomeScreen> {
           RoundIconButton(
             icon: Icon(Icons.home, color: theme.highlightText),
             onPressed: () => setState(() => _activeInstance = null),
-            normalColor: theme.buttonNormal,
-            hoverColor: theme.buttonHover,
             tooltip: "Home",
-            tooltipBackgroundColor: theme.borderColor,
-            tooltipTextColor: theme.primaryText,
           ),
           RoundIconButton(
             icon: Icon(Icons.add, color: theme.highlightText),
             onPressed: () => setState(() => _activeInstance = "create"),
-            normalColor: theme.buttonNormal,
-            hoverColor: theme.buttonHover,
             tooltip: "Create new instance",
-            tooltipBackgroundColor: theme.borderColor,
-            tooltipTextColor: theme.primaryText,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -172,11 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
           RoundIconButton(
             icon: Icon(Icons.checkroom, color: theme.highlightText),
             onPressed: () {},
-            normalColor: theme.buttonNormal,
-            hoverColor: theme.buttonHover,
             tooltip: "Coming soon",
-            tooltipBackgroundColor: theme.borderColor,
-            tooltipTextColor: theme.primaryText,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -185,20 +173,12 @@ class _HomeScreenState extends State<HomeScreen> {
           RoundIconButton(
             icon: Icon(Icons.settings, color: theme.highlightText),
             onPressed: () {},
-            normalColor: theme.buttonNormal,
-            hoverColor: theme.buttonHover,
             tooltip: "Settings",
-            tooltipBackgroundColor: theme.borderColor,
-            tooltipTextColor: theme.primaryText,
           ),
           RoundIconButton(
             icon: Icon(Icons.discord, color: theme.highlightText),
             onPressed: () {},
-            normalColor: theme.buttonNormal,
-            hoverColor: theme.buttonHover,
             tooltip: "Join our Discord",
-            tooltipBackgroundColor: theme.borderColor,
-            tooltipTextColor: theme.primaryText,
           ),
         ],
       ),

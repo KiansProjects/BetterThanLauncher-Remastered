@@ -1,23 +1,16 @@
+import 'package:betterthanlauncher/themes/theme_manager.dart';
 import 'package:flutter/material.dart';
 
 class RoundIconButton extends StatefulWidget {
   final Widget icon;
   final VoidCallback onPressed;
-  final Color normalColor;
-  final Color hoverColor;
   final String? tooltip;
-  final Color? tooltipBackgroundColor;
-  final Color? tooltipTextColor;
 
   const RoundIconButton({
     super.key,
     required this.icon,
     required this.onPressed,
-    required this.normalColor,
-    required this.hoverColor,
     this.tooltip,
-    this.tooltipBackgroundColor,
-    this.tooltipTextColor,
   });
 
   @override
@@ -26,6 +19,7 @@ class RoundIconButton extends StatefulWidget {
 
 class _RoundIconButtonState extends State<RoundIconButton> {
   bool isHovered = false;
+  final theme = ThemeManager.currentTheme.value;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +31,7 @@ class _RoundIconButtonState extends State<RoundIconButton> {
         height: 40,
         margin: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: isHovered ? widget.hoverColor : widget.normalColor,
+          color: isHovered ? theme.buttonHover : theme.buttonHover,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Center(child: widget.icon),
@@ -53,11 +47,11 @@ class _RoundIconButtonState extends State<RoundIconButton> {
               waitDuration: const Duration(milliseconds: 400),
               preferBelow: false,
               decoration: BoxDecoration(
-                color: widget.tooltipBackgroundColor ?? Colors.grey[800],
+                color: theme.borderColor,
                 borderRadius: BorderRadius.circular(6),
               ),
               textStyle: TextStyle(
-                color: widget.tooltipTextColor ?? Colors.white,
+                color: theme.highlightText,
                 fontSize: 13,
               ),
               child: button,

@@ -93,10 +93,9 @@ class InstanceListView extends StatelessWidget {
                           ),
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center, // vertikal mittig
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Name links, mittig vertikal
                             Expanded(
                               child: Text(
                                 name,
@@ -108,12 +107,23 @@ class InstanceListView extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            // Play-Button rechts, mittig vertikal
-                            IconButton(
-                              icon: Icon(Icons.play_arrow, color: theme.primaryText, size: 20),
-                              splashRadius: 20,
-                              onPressed: () => onStartInstance(name),
-                              tooltip: "Start Instance",
+                            Tooltip(
+                              message: "Start Instance",
+                              waitDuration: const Duration(milliseconds: 400),
+                              preferBelow: false,
+                              decoration: BoxDecoration(
+                                color: theme.borderColor,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              textStyle: TextStyle(
+                                color: theme.highlightText,
+                                fontSize: 13,
+                              ),
+                              child: IconButton(
+                                icon: Icon(Icons.play_arrow, color: theme.primaryText, size: 20),
+                                splashRadius: 20,
+                                onPressed: () => onStartInstance(name),
+                              ),
                             ),
                           ],
                         ),

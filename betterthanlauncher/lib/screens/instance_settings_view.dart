@@ -82,7 +82,10 @@ class _InstanceSettingsViewState extends State<InstanceSettingsView> {
     if (_selectedVersion != null) updatedConfig["version"] = _selectedVersion!;
 
     try {
-      await widget.instanceManager.saveConfig(widget.instanceName, updatedConfig);
+      final delay = Future.delayed(Duration(seconds: 1));
+
+      await Future.wait([widget.instanceManager.saveConfig(widget.instanceName, updatedConfig), delay]);
+
       setState(() => _saving = false);
 
       if (widget.onSaved != null) widget.onSaved!();
