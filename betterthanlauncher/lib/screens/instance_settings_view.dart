@@ -1,9 +1,8 @@
+import 'package:betterthanlauncher/service/instance_manager.dart';
+import 'package:betterthanlauncher/service/version_manager.dart';
+import 'package:betterthanlauncher/themes/theme_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../themes/theme_manager.dart';
-import '../service/instance_manager.dart';
-import '../service/version_manager.dart';
-import '../widgets/app_card_decoration.dart';
 
 class InstanceSettingsView extends StatefulWidget {
   final String instanceName;

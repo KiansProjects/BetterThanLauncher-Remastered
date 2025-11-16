@@ -69,6 +69,7 @@ flutter:
     - assets/icons/app_icon.png
     - assets/icons/logo.png
     - assets/icons/title.png
+    - assets/icons/title_without_btl.png
     - assets/icons/instance_icon.png
 
     - assets/backgrounds/background.png
