@@ -125,7 +125,7 @@ class _InstanceSettingsViewState extends State<InstanceSettingsView> {
 
   Widget _buildVersionDropdown(dynamic theme) {
     return DropdownButtonFormField<String>(
-        value: _selectedVersion,
+        initialValue: _selectedVersion,
         dropdownColor: theme.cardBackground,
         items: _availableVersions
             .map(
@@ -225,18 +225,18 @@ class _InstanceSettingsViewState extends State<InstanceSettingsView> {
       child: ElevatedButton(
         onPressed: _saving ? null : _saveConfig,
         style: ButtonStyle(
-          backgroundColor: MaterialStateProperty.resolveWith<Color?>(
+          backgroundColor: WidgetStateProperty.resolveWith<Color?>(
             (states) {
-              if (states.contains(MaterialState.hovered)) return theme.buttonHover;
-              if (states.contains(MaterialState.disabled)) return theme.buttonNormal.withOpacity(0.5);
+              if (states.contains(WidgetState.hovered)) return theme.buttonHover;
+              if (states.contains(WidgetState.disabled)) return theme.buttonNormal.withOpacity(0.5);
               return theme.buttonNormal;
             },
           ),
-          foregroundColor: MaterialStateProperty.all(theme.highlightText),
-          shape: MaterialStateProperty.all(
+          foregroundColor: WidgetStateProperty.all(theme.highlightText),
+          shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          padding: MaterialStateProperty.all(EdgeInsets.zero),
+          padding: WidgetStateProperty.all(EdgeInsets.zero),
         ),
         child: _saving
             ? SizedBox(

@@ -142,7 +142,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
       print('$prefix Java OK ($javaVersion). Continuing setup...');
 
-      final discordPresenceManager = new DiscordPresenceManager(clientId: '1439679585133531136');
+      final discordPresenceManager = DiscordPresenceManager(clientId: '1439679585133531136');
       discordPresenceManager.init();
 
       print('$prefix Setting up app folders...');
