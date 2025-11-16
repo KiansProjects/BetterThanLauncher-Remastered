@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../service/instance_manager.dart';
+import '../service/version_manager.dart';
 import '../themes/theme_manager.dart';
 import '../widgets/app_card_decoration.dart';
 import 'instance_output_view.dart';
@@ -10,6 +11,7 @@ import 'instance_settings_view.dart';
 class InstanceDetailView extends StatefulWidget {
   final String instanceName;
   final InstanceManager instanceManager;
+  final VersionManager versionManager;
   final ValueNotifier<List<String>> logLines;
   final VoidCallback onClose;
 
@@ -17,6 +19,7 @@ class InstanceDetailView extends StatefulWidget {
     super.key,
     required this.instanceName,
     required this.instanceManager,
+    required this.versionManager,
     required this.logLines,
     required this.onClose,
   });
@@ -184,7 +187,7 @@ class _InstanceDetailViewState extends State<InstanceDetailView> {
                 children: [
                   Center(child: Text("Main Area / Mods (WIP)")),
                   InstanceOutputView(logLines: widget.logLines),
-                  InstanceSettingsView(instanceName: widget.instanceName),
+                  InstanceSettingsView(instanceName: widget.instanceName, instanceManager: widget.instanceManager, versionManager: widget.versionManager),
                 ],
               ),
             ),

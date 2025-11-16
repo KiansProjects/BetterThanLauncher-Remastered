@@ -1,18 +1,19 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:betterthanlauncher/screens/build_screen.dart';
+import 'package:betterthanlauncher/screens/home_screen.dart';
+import 'package:betterthanlauncher/service/authenticator.dart';
+import 'package:betterthanlauncher/service/discord_presence_manager.dart';
+import 'package:betterthanlauncher/service/instance_manager.dart';
+import 'package:betterthanlauncher/service/java_file_compiler.dart';
+import 'package:betterthanlauncher/service/library_manager.dart';
+import 'package:betterthanlauncher/service/version_manager.dart';
+import 'package:betterthanlauncher/themes/theme_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
-import 'themes/theme_manager.dart';
-import 'screens/build_screen.dart';
-import 'screens/home_screen.dart';
-import 'service/authenticator.dart';
-import 'service/instance_manager.dart';
-import 'service/library_manager.dart';
-import 'service/version_manager.dart';
-import 'service/java_file_compiler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,7 +56,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  final String prefix = '[SplashScreen]';
+  final String prefix = '[Setup]';
 
   @override
   void initState() {
@@ -141,6 +142,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
       print('$prefix Java OK ($javaVersion). Continuing setup...');
 
+      final discordPresenceManager = new DiscordPresenceManager(clientId: '1439679585133531136');
+      discordPresenceManager.init();
+
       print('$prefix Setting up app folders...');
       final dirs = await setupAppFolders();
       print('$prefix Folders ready.');
@@ -151,7 +155,6 @@ class _SplashScreenState extends State<SplashScreen> {
       final versionsDir = dirs[3];
       final scriptsDir = dirs[4];
 
-      print('$prefix Initializing LibraryManager...');
       final libManager = LibraryManager();
       await libManager.init(libDirPath: librariesDir.path);
 
@@ -236,12 +239,10 @@ class _SplashScreenState extends State<SplashScreen> {
         version: '2.0.7',
       );
 
-      print('$prefix Initializing VersionManager...');
       final versManager = VersionManager();
       await versManager.init(versionsDirPath: versionsDir.path);
       await versManager.downloadAllVersions();
 
-      print('$prefix Initializing JavaFileCompiler...');
       final compiler = JavaFileCompiler();
       await compiler.init(scriptsDirPath: scriptsDir.path);
 
@@ -254,7 +255,6 @@ class _SplashScreenState extends State<SplashScreen> {
       await compiler.compileClass('Authenticate.java');
       await compiler.compileClass('JarMerger.java');
 
-      print('$prefix Initializing Authenticator...');
       final auth = Authenticator();
       await auth.init(profileDirPath: launcherDir.path, scriptsDirPath: scriptsDir.path);
 
@@ -267,16 +267,26 @@ class _SplashScreenState extends State<SplashScreen> {
         await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-api', version: '2.20.0'),
         await libManager.getLibraryPath(groupId: 'org.apache.logging.log4j', artifactId: 'log4j-core', version: '2.20.0'),
       ]);
-
-      print('$prefix Initializing InstanceManager...');
-      final instManager = InstanceManager();
-      await instManager.init(instancesDirPath: instancesDir.path, scriptsDirPath: scriptsDir.path, authenticator: auth, libraryManager: libManager, versionManager: versManager);
-
+      
       await auth.authenticateFlow();
+
+      final instManager = InstanceManager();
+      await instManager.init(
+        instancesDirPath: instancesDir.path, 
+        scriptsDirPath: scriptsDir.path, 
+        authenticator: auth,
+        discordPresenceManager: discordPresenceManager, 
+        libraryManager: libManager, 
+        versionManager: versManager,
+      );
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => BetterThanLauncher(instanceManager: instManager, versionManager: versManager,)),
+          MaterialPageRoute(builder: (_) => BetterThanLauncher(
+            discordPresenceManager: discordPresenceManager,
+            instanceManager: instManager,
+            versionManager: versManager,
+          )),
         );
       }
     } catch (e) {
@@ -308,11 +318,13 @@ Future<List<Directory>> setupAppFolders() async {
 }
 
 class BetterThanLauncher extends StatelessWidget {
+  final DiscordPresenceManager discordPresenceManager;
   final InstanceManager instanceManager;
   final VersionManager versionManager;
 
   const BetterThanLauncher({
     super.key,
+    required this.discordPresenceManager,
     required this.instanceManager,
     required this.versionManager,
   });
@@ -334,7 +346,7 @@ class BetterThanLauncher extends StatelessWidget {
               bodyMedium: TextStyle(color: theme.highlightText),
             ),
           ),
-          home: HomeScreen(instanceManager: instanceManager, versionManager: versionManager,),
+          home: HomeScreen(discordPresenceManager: discordPresenceManager, instanceManager: instanceManager, versionManager: versionManager),
         );
       },
     );

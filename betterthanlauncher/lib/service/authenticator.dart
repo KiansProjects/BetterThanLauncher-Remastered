@@ -22,6 +22,8 @@ class Authenticator {
     required String scriptsDirPath,
     required String profileDirPath,
   }) async {
+    print('$prefix Initializing Authenticator...');
+
     _scriptsDir = Directory(scriptsDirPath);
     if (!await _scriptsDir.exists()) await _scriptsDir.create(recursive: true);
 

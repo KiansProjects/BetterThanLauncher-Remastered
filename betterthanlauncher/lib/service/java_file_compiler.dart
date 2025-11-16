@@ -9,6 +9,8 @@ class JavaFileCompiler {
   final String prefix = '[JavaCompiler]';
 
   Future<void> init({required String scriptsDirPath}) async {
+    print('$prefix Initializing JavaFileCompiler...');
+    
     _scriptsDir = Directory(scriptsDirPath);
     if (!await _scriptsDir.exists()) {
       await _scriptsDir.create(recursive: true);
@@ -51,7 +53,6 @@ class JavaFileCompiler {
 
     if (await javaFile.exists()) {
       await javaFile.delete();
-      print('$prefix Temporary file $javaFileName deleted.');
     }
   }
 }

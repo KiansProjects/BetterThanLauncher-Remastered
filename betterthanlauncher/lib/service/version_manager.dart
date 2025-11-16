@@ -12,6 +12,8 @@ class VersionManager {
   final String prefix = '[VersionManager]';
 
   Future<void> init({required String versionsDirPath}) async {
+    print('$prefix Initializing VersionManager...');
+
     _versionsDir = Directory(versionsDirPath);
 
     if (!await _versionsDir.exists()) {

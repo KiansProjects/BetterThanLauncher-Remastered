@@ -6,7 +6,7 @@ import '../themes/theme_manager.dart';
 class InstanceListView extends StatelessWidget {
   final InstanceManager instanceManager;
   final void Function(String name) onStartInstance;
-  final void Function(String name) onShowDetails; // Tile-Klick
+  final void Function(String name) onShowDetails;
 
   const InstanceListView({
     super.key,
@@ -51,11 +51,7 @@ class InstanceListView extends StatelessWidget {
           itemBuilder: (context, i) {
             final instance = instanceList[i];
             final name = instance.path.split(Platform.pathSeparator).last;
-
-            final iconPath = File("${instance.path}/icon.png");
-            final imageProvider = iconPath.existsSync()
-                ? FileImage(iconPath)
-                : const AssetImage('assets/icons/instance_icon.png') as ImageProvider;
+            final imageProvider = instanceManager.getIcon(name);
 
             return GestureDetector(
               onTap: () => onShowDetails(name),

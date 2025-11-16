@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:betterthanlauncher/service/authenticator.dart';
-import 'package:flutter/foundation.dart';
+import 'package:betterthanlauncher/service/discord_presence_manager.dart';
+import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 import 'library_manager.dart';
 import 'version_manager.dart';
@@ -14,6 +15,7 @@ class InstanceManager {
   late Directory _instancesRootDir;
   late Directory _scriptsDir;
   late Authenticator _authenticator;
+  late DiscordPresenceManager _discordPresenceManager;
   late LibraryManager _libraryManager;
   late VersionManager _versionManager;
 
@@ -23,12 +25,16 @@ class InstanceManager {
     required String instancesDirPath,
     required String scriptsDirPath,
     required Authenticator authenticator,
+    required DiscordPresenceManager discordPresenceManager,
     required LibraryManager libraryManager,
     required VersionManager versionManager,
   }) async {
+    print('$prefix Initializing InstanceManager...');
+
     _instancesRootDir = Directory(instancesDirPath);
     _scriptsDir = Directory(scriptsDirPath);
     _authenticator = authenticator;
+    _discordPresenceManager = discordPresenceManager;
     _libraryManager = libraryManager;
     _versionManager = versionManager;
 
@@ -40,18 +46,18 @@ class InstanceManager {
 
     await for (final entity in _instancesRootDir.list()) {
       if (entity is Directory) {
-        final jar = File(p.join(entity.path, 'client.jar'));
-        final hiddenJar = File(p.join(entity.path, '.client.jar'));
+        final jar = File(p.join(entity.path, '.client.jar'));
         final config = File(p.join(entity.path, 'instance.conf'));
 
-        final jarExists = await jar.exists() || await hiddenJar.exists();
+        final jarExists = await jar.exists();
         final configExists = await config.exists();
 
         if (jarExists && configExists) {
           validDirs.add(entity);
         } else if (jarExists || configExists) {
           await _repairInstance(entity);
-          final newJar = await jar.exists() || await hiddenJar.exists();
+
+          final newJar = await jar.exists();
           final newConfig = await config.exists();
           if (newJar && newConfig) validDirs.add(entity);
         }
@@ -72,30 +78,28 @@ class InstanceManager {
     await Process.run('attrib', ['+h', file.path]);
   }
 
-  Future<File> _hideFileUnix(File file) async {
-    final newPath = p.join(file.parent.path, '.client.jar');
-    return await file.rename(newPath);
-  }
-
   Future<Map<String, String>> _loadConfig(Directory instance) async {
     final file = File(p.join(instance.path, 'instance.conf'));
     if (!await file.exists()) return {};
     final lines = await file.readAsLines();
     final config = <String, String>{};
+    
     for (final line in lines) {
-      if (line.contains('=')) {
-        final parts = line.split('=');
-        config[parts[0].trim()] = parts[1].trim();
-      }
+      final index = line.indexOf('=');
+      if (index == -1) continue;
+      final key = line.substring(0, index).trim();
+      final value = line.substring(index + 1).trim();
+      config[key] = value;
     }
+    
     return config;
   }
 
-  Future<void> _createDefaultConfig(Directory instance, {String? version}) async {
+  Future<void> _createDefaultConfig(Directory instance, {required String version}) async {
     final configFile = File(p.join(instance.path, 'instance.conf'));
     await configFile.writeAsString(
       [
-        'version=${version ?? "unknown"}',
+        'version=$version',
         'ram=2048',
         'jvmArgs=-XX:+UseG1GC '
             '-XX:+UnlockExperimentalVMOptions '
@@ -114,7 +118,7 @@ class InstanceManager {
     final btaJarPath = await _versionManager.getVersionPath(btaVersion);
     final betaJarPath = await _versionManager.getVersionPath('b1.7.3');
 
-    final mergedJarPath = p.join(instance.path, 'client.jar');
+    final mergedJarPath = p.join(instance.path, '.client.jar');
 
     await Process.run(
       'java',
@@ -124,31 +128,35 @@ class InstanceManager {
     final jar = File(mergedJarPath);
     if (Platform.isWindows) {
       await _hideFileWindows(jar);
-    } else {
-      await _hideFileUnix(jar);
     }
   }
 
   Future<void> createInstance(String name) async {
     final dir = Directory(p.join(_instancesRootDir.path, name));
     if (await dir.exists()) return;
+
     await dir.create(recursive: true);
-    await _createDefaultConfig(dir);
+
+    final versions = await _versionManager.getVersions();
+    final version = versions.last;
+
+    await _createDefaultConfig(dir, version: version);
     await _mergeClientJar(dir);
+
     instances.value = [...instances.value, dir];
   }
 
   Future<void> _repairInstance(Directory instance) async {
-    final jar = File(p.join(instance.path, 'client.jar'));
     final hiddenJar = File(p.join(instance.path, '.client.jar'));
+    final oldJar = File(p.join(instance.path, 'client.jar'));
     final config = File(p.join(instance.path, 'instance.conf'));
 
-    final jarExists = await jar.exists() || await hiddenJar.exists();
+    final jarExists = await hiddenJar.exists() || await oldJar.exists();
     final configExists = await config.exists();
 
     if (!configExists && jarExists) {
       final versions = await _versionManager.getVersions();
-      final version = versions.isNotEmpty ? versions.last : "unknown";
+      final version = versions.last;
       await _createDefaultConfig(instance, version: version);
     }
 
@@ -156,11 +164,10 @@ class InstanceManager {
       await _mergeClientJar(instance);
     }
 
-    if (await jar.exists()) {
+    if (await oldJar.exists() && !(await hiddenJar.exists())) {
+      await oldJar.rename(hiddenJar.path);
       if (Platform.isWindows) {
-        await _hideFileWindows(jar);
-      } else {
-        await _hideFileUnix(jar);
+        await _hideFileWindows(hiddenJar);
       }
     }
   }
@@ -169,13 +176,14 @@ class InstanceManager {
     final instanceDir = Directory(p.join(_instancesRootDir.path, name));
     if (!await instanceDir.exists()) throw Exception("Instance '$name' does not exist.");
 
-    File? clientJar;
-    final normal = File(p.join(instanceDir.path, 'client.jar'));
-    final hidden = File(p.join(instanceDir.path, '.client.jar'));
+    final clientJar = File(p.join(instanceDir.path, '.client.jar'));
+    if (!await clientJar.exists()) throw Exception(".client.jar missing.");
 
-    if (await normal.exists()) clientJar = normal;
-    if (await hidden.exists()) clientJar = hidden;
-    if (clientJar == null) throw Exception("client.jar missing.");
+    _discordPresenceManager.setPresence(
+      details: 'Starting $name',
+      largeImageKey: 'app_icon',
+      smallImageKey: 'bta',
+    );
 
     final config = await _loadConfig(instanceDir);
     final ram = config['ram'] ?? '2048';
@@ -228,7 +236,8 @@ class InstanceManager {
     ];
 
     final log4jLibs = await Future.wait(
-      log4jModules.map((m) => _libraryManager.getLibraryPath(
+      log4jModules.map((m) =>
+          _libraryManager.getLibraryPath(
             groupId: 'org.apache.logging.log4j',
             artifactId: m,
             version: '2.20.0',
@@ -272,12 +281,26 @@ class InstanceManager {
       ...gameArgs,
     ];
 
-    return await Process.start(
+    final process = await Process.start(
       'java',
       args,
       workingDirectory: instanceDir.path,
       mode: ProcessStartMode.normal,
     );
+
+    _discordPresenceManager.setPresence(
+      details: 'Playing $name',
+      largeImageKey: 'app_icon',
+      smallImageKey: 'bta',
+    );
+
+    process.exitCode.then((_) {
+      _discordPresenceManager.setPresence(
+        details: 'Just chilling...',
+      );
+    });
+
+    return process;
   }
 
   String? getInstancePath(String name) {
@@ -292,5 +315,47 @@ class InstanceManager {
     await instanceDir.delete(recursive: true);
     instances.value =
         instances.value.where((d) => d != instanceDir).toList();
+  }
+
+  Future<Map<String, String>> getConfig(String name) async {
+    final instanceDir = instances.value.firstWhere(
+        (d) => p.basename(d.path) == name,
+        orElse: () => throw Exception("Instance '$name' does not exist."));
+    return await _loadConfig(instanceDir);
+  }
+
+  Future<void> setConfigValue(String name, String key, String value) async {
+    final config = await getConfig(name);
+    config[key] = value;
+    await saveConfig(name, config);
+  }
+
+  Future<void> saveConfig(String name, Map<String, String> config) async {
+    final instanceDir = instances.value.firstWhere(
+        (d) => p.basename(d.path) == name,
+        orElse: () => throw Exception("Instance '$name' does not exist."));
+    final configFile = File(p.join(instanceDir.path, 'instance.conf'));
+
+    if (!config.containsKey('version') || config['version']!.isEmpty) {
+      throw Exception("Config muss eine gültige Version enthalten.");
+    }
+
+    final lines = config.entries.map((e) => '${e.key}=${e.value}').toList();
+    await configFile.writeAsString(lines.join('\n'));
+  }
+
+  ImageProvider getIcon(String name) {
+    try {
+      final instanceDir = instances.value.firstWhere(
+        (d) => p.basename(d.path) == name,
+      );
+
+      final iconFile = File(p.join(instanceDir.path, 'icon.png'));
+      if (iconFile.existsSync()) {
+        return FileImage(iconFile);
+      }
+    } catch (_) { }
+
+    return const AssetImage('assets/icons/instance_icon.png');
   }
 }

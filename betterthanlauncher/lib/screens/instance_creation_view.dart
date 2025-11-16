@@ -73,8 +73,8 @@ class _InstanceCreationViewState extends State<InstanceCreationView> {
     final theme = ThemeManager.currentTheme.value;
 
     return Container(
-      padding: const EdgeInsets.all(16), // identisch zu InstanceDetailView
-      decoration: appCardDecoration(theme), // 👈 gleicher Stil
+      padding: const EdgeInsets.all(16),
+      decoration: appCardDecoration(theme),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -101,19 +101,19 @@ class _InstanceCreationViewState extends State<InstanceCreationView> {
                     labelText: "Instance Name",
                     labelStyle: TextStyle(color: theme.secondaryText),
                     enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: theme.borderColor),
+                      borderSide: BorderSide(color: theme.borderColor, width: 2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: theme.primaryText),
+                      borderSide: BorderSide(color: theme.primaryText, width: 2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     errorBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: theme.errorText),
+                      borderSide: BorderSide(color: theme.errorText, width: 2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     focusedErrorBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: theme.errorText),
+                      borderSide: BorderSide(color: theme.errorText, width: 2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     filled: true,
@@ -151,11 +151,11 @@ class _InstanceCreationViewState extends State<InstanceCreationView> {
                       labelText: "Version",
                       labelStyle: TextStyle(color: theme.secondaryText),
                       enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.borderColor),
+                        borderSide: BorderSide(color: theme.borderColor, width: 2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.primaryText),
+                        borderSide: BorderSide(color: theme.primaryText, width: 2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       filled: true,

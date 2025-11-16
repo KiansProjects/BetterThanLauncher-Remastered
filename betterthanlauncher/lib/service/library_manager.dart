@@ -12,6 +12,8 @@ class LibraryManager {
   final String prefix = '[LibraryManager]';
 
   Future<void> init({required String libDirPath}) async {
+    print('$prefix Initializing LibraryManager...');
+    
     _librariesDir = Directory(libDirPath);
 
     if (!await _librariesDir.exists()) {

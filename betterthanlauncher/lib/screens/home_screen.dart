@@ -4,18 +4,25 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../components/round_icon_button.dart';
 import '../components/top_left_border_painter.dart';
-import '../themes/theme_manager.dart';
+import '../service/discord_presence_manager.dart';
 import '../service/instance_manager.dart';
 import '../service/version_manager.dart';
+import '../themes/theme_manager.dart';
 import 'instance_creation_view.dart';
-import 'instance_list_view.dart';
 import 'instance_detail_view.dart';
+import 'instance_list_view.dart';
 
 class HomeScreen extends StatefulWidget {
+  final DiscordPresenceManager discordPresenceManager;
   final InstanceManager instanceManager;
   final VersionManager versionManager;
 
-  const HomeScreen({super.key, required this.instanceManager, required this.versionManager});
+  const HomeScreen({
+    super.key,
+    required this.discordPresenceManager,
+    required this.instanceManager,
+    required this.versionManager
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -31,6 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadBackgroundImage();
+
+    widget.discordPresenceManager.setPresence(details: 'Just chilling...');
   }
 
   Future<void> _loadBackgroundImage() async {
@@ -53,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: theme.cardBackground,
       body: Stack(
         children: [
-          // MAIN AREA
           Positioned(
             top: topBarHeight,
             left: leftBarWidth,
@@ -75,7 +83,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // TOP BAR
           Positioned(
             top: 0,
             left: 0,
@@ -90,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // LEFT SIDEBAR
           Positioned(
             top: topBarHeight,
             left: 0,
@@ -126,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: InstanceDetailView(
           instanceName: _activeInstance!,
           instanceManager: widget.instanceManager,
+          versionManager: widget.versionManager,
           logLines: _logLines,
           onClose: () => setState(() => _activeInstance = null),
         ),

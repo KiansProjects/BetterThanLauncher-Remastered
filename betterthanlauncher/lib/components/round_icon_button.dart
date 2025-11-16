@@ -51,7 +51,7 @@ class _RoundIconButtonState extends State<RoundIconButton> {
           ? Tooltip(
               message: widget.tooltip!,
               waitDuration: const Duration(milliseconds: 400),
-              preferBelow: false, // Places tooltip above when possible
+              preferBelow: false,
               decoration: BoxDecoration(
                 color: widget.tooltipBackgroundColor ?? Colors.grey[800],
                 borderRadius: BorderRadius.circular(6),
