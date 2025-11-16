@@ -11,6 +11,7 @@ It allows you to manage game instances, modify settings, and run the latest vers
 - 🌐 **Modrinth BTA mods list** integration in the launcher  
 - ⚙️ **Launcher settings** for customization  
 - 🔄 **Update instance versions** directly from the launcher
+- 🔑 **Microsoft account authentication** for logging in
 
 ---
 
