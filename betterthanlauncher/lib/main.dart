@@ -5,7 +5,6 @@ import 'package:betterthanlauncher/screens/home_screen.dart';
 import 'package:betterthanlauncher/service/authenticator.dart';
 import 'package:betterthanlauncher/service/discord_presence_manager.dart';
 import 'package:betterthanlauncher/service/instance_manager.dart';
-import 'package:betterthanlauncher/service/java_file_compiler.dart';
 import 'package:betterthanlauncher/service/library_manager.dart';
 import 'package:betterthanlauncher/service/version_manager.dart';
 import 'package:betterthanlauncher/themes/theme_manager.dart';
@@ -241,19 +240,22 @@ class _SplashScreenState extends State<SplashScreen> {
 
       final versManager = VersionManager();
       await versManager.init(versionsDirPath: versionsDir.path);
-      await versManager.downloadAllVersions();
+      await versManager.setUpMinecraftBeta();
+      await versManager.setUpBtaVersions();
 
-      final compiler = JavaFileCompiler();
-      await compiler.init(scriptsDirPath: scriptsDir.path);
+      final authBytes = await rootBundle.load("assets/scripts/Authenticate.class");
+      final authFile = File("${scriptsDir.path}/Authenticate.class");
+      await authFile.writeAsBytes(
+        authBytes.buffer.asUint8List(),
+        flush: true,
+      );
 
-      compiler.addLibraryPaths([
-        await libManager.getLibraryPath(groupId: 'net.raphimc', artifactId: 'MinecraftAuth', version: '4.1.2'),
-        await libManager.getLibraryPath(groupId: 'net.lenni0451.commons', artifactId: 'httpclient', version: '1.8.0'),
-        await libManager.getLibraryPath(groupId: 'com.google.code.gson', artifactId: 'gson', version: '2.13.2'),
-      ]);
-
-      await compiler.compileClass('Authenticate.java');
-      await compiler.compileClass('JarMerger.java');
+      final mergeBytes = await rootBundle.load("assets/scripts/JarMerger.class");
+      final mergeFile = File("${scriptsDir.path}/JarMerger.class");
+      await mergeFile.writeAsBytes(
+        mergeBytes.buffer.asUint8List(),
+        flush: true,
+      );
 
       final auth = Authenticator();
       await auth.init(profileDirPath: launcherDir.path, scriptsDirPath: scriptsDir.path);

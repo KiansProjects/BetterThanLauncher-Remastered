@@ -10,6 +10,9 @@ class VersionManager {
   late Directory _versionsDir;
 
   final String prefix = '[VersionManager]';
+  
+  final betaUrl = 'https://launcher.mojang.com/v1/objects/43db9b498cb67058d2e12d394e6507722e71bb45/client.jar';
+  final btaUrl = 'https://downloads.betterthanadventure.net/bta-client/release/';
 
   Future<void> init({required String versionsDirPath}) async {
     print('$prefix Initializing VersionManager...');
@@ -53,16 +56,14 @@ class VersionManager {
     return outFile;
   }
 
-  Future<void> downloadMinecraftBeta() async {
+  Future<void> setUpMinecraftBeta() async {
     print('$prefix Downloading Minecraft Beta version...');
-    final url = 'https://launcher.mojang.com/v1/objects/43db9b498cb67058d2e12d394e6507722e71bb45/client.jar';
-    await downloadJarToFolder(url, 'b1.7.3');
+    await downloadJarToFolder(betaUrl, 'b1.7.3');
   }
 
-  Future<void> downloadBtaVersions() async {
-    final releasesUrl = 'https://downloads.betterthanadventure.net/bta-client/release/';
+  Future<void> setUpBtaVersions() async {
     print('$prefix Fetching Better Than Adventure (BTA) versions...');
-    final response = await http.get(Uri.parse(releasesUrl));
+    final response = await http.get(Uri.parse(btaUrl));
 
     if (response.statusCode != 200) {
       print('$prefix Failed to fetch BTA releases (HTTP ${response.statusCode})');
@@ -74,7 +75,7 @@ class VersionManager {
     final matches = regex.allMatches(body);
 
     if (matches.isEmpty) {
-      print('$prefix No BTA versions found at $releasesUrl');
+      print('$prefix No BTA versions found at $btaUrl');
       return;
     }
 
@@ -82,22 +83,14 @@ class VersionManager {
 
     for (final match in matches) {
       final versionFolder = match.group(1)!;
-      final jarUrl = '$releasesUrl$versionFolder/client.jar';
-      try {
-        await downloadJarToFolder(jarUrl, versionFolder);
-      } catch (e) {
-        print('$prefix Failed to download BTA version $versionFolder: $e');
+      final targetDir = Directory(p.join(_versionsDir.path, versionFolder));
+        if (!await targetDir.exists()) {
+        print('$prefix Creating directory for version: $versionFolder');
+        await targetDir.create(recursive: true);
       }
     }
 
     print('$prefix Finished downloading available BTA versions.');
-  }
-
-  Future<void> downloadAllVersions() async {
-    print('$prefix Starting full version download (Beta + BTA)...');
-    await downloadMinecraftBeta();
-    await downloadBtaVersions();
-    print('$prefix All version downloads completed.');
   }
 
   Future<List<String>> getVersions() async {
@@ -111,10 +104,7 @@ class VersionManager {
 
     for (final entity in entries) {
       if (entity is Directory) {
-        final jarFile = File(p.join(entity.path, 'client.jar'));
-        if (await jarFile.exists()) {
-          versions.add(p.basename(entity.path));
-        }
+        versions.add(p.basename(entity.path));
       }
     }
 
@@ -122,17 +112,32 @@ class VersionManager {
     return versions;
   }
 
-  Future<String?> getVersionPath(String versionName) async {
+  Future<String?> getVersion(String versionName) async {
     final dir = Directory(p.join(_versionsDir.path, versionName));
     final jarFile = File(p.join(dir.path, 'client.jar'));
 
-    final exists = await jarFile.exists();
-
-    if (exists) {
+    if (await jarFile.exists()) {
       return jarFile.path;
     } else {
       print('$prefix Version not found locally: $versionName');
-      return null;
+      
+      try {
+        String url;
+        if (versionName == 'b1.7.3') {
+          url = betaUrl;
+        } else if (versionName.startsWith('v')) {
+          url = '$btaUrl$versionName/client.jar';
+        } else {
+          print('$prefix Unknown version: $versionName');
+          return null;
+        }
+
+        final downloadedFile = await downloadJarToFolder(url, versionName);
+        return downloadedFile.path;
+      } catch (e) {
+        print('$prefix Failed to download version $versionName: $e');
+        return null;
+      }
     }
   }
 }

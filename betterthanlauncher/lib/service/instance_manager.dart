@@ -67,8 +67,12 @@ class InstanceManager {
     instances.value = validDirs;
 
     if (instances.value.isEmpty) {
-      await createInstance("example_instance");
+      final versions = await _versionManager.getVersions();
+      final btaVersion = versions.lastWhere((v) => v.startsWith('v'));
+      await createInstance("example_instance", btaVersion);
     }
+
+    print('$prefix Loaded instances: ${instances.value.map((d) => p.basename(d.path))}');
   }
 
   bool instanceExists(String name) =>
@@ -83,7 +87,7 @@ class InstanceManager {
     if (!await file.exists()) return {};
     final lines = await file.readAsLines();
     final config = <String, String>{};
-    
+
     for (final line in lines) {
       final index = line.indexOf('=');
       if (index == -1) continue;
@@ -91,7 +95,7 @@ class InstanceManager {
       final value = line.substring(index + 1).trim();
       config[key] = value;
     }
-    
+
     return config;
   }
 
@@ -112,14 +116,12 @@ class InstanceManager {
     );
   }
 
-  Future<void> _mergeClientJar(Directory instance) async {
-    final versions = await _versionManager.getVersions();
-    final btaVersion = versions.lastWhere((v) => v.startsWith('v'));
-    final btaJarPath = await _versionManager.getVersionPath(btaVersion);
-    final betaJarPath = await _versionManager.getVersionPath('b1.7.3');
+  Future<void> _mergeClientJar(Directory instance, String version) async {
+    final btaJarPath = await _versionManager.getVersion(version);
+    final betaJarPath = await _versionManager.getVersion('b1.7.3');
 
     final mergedJarPath = p.join(instance.path, '.client.jar');
-
+  
     await Process.run(
       'java',
       ['-cp', _scriptsDir.path, 'JarMerger', btaJarPath!, betaJarPath!, mergedJarPath],
@@ -131,17 +133,14 @@ class InstanceManager {
     }
   }
 
-  Future<void> createInstance(String name) async {
+  Future<void> createInstance(String name, String version) async {
     final dir = Directory(p.join(_instancesRootDir.path, name));
     if (await dir.exists()) return;
 
     await dir.create(recursive: true);
 
-    final versions = await _versionManager.getVersions();
-    final version = versions.last;
-
     await _createDefaultConfig(dir, version: version);
-    await _mergeClientJar(dir);
+    await _mergeClientJar(dir, version);
 
     instances.value = [...instances.value, dir];
   }
@@ -161,7 +160,11 @@ class InstanceManager {
     }
 
     if (!jarExists && configExists) {
-      await _mergeClientJar(instance);
+      final instanceName = p.basename(instance.path);
+      final version = await getConfigValue(instanceName, 'version');
+      if (version != null) {
+        await _mergeClientJar(instance, version);
+      }
     }
 
     if (await oldJar.exists() && !(await hiddenJar.exists())) {
@@ -173,8 +176,10 @@ class InstanceManager {
   }
 
   Future<Process> startInstanceWithOutput(String name) async {
-    final instanceDir = Directory(p.join(_instancesRootDir.path, name));
-    if (!await instanceDir.exists()) throw Exception("Instance '$name' does not exist.");
+    final instanceDir = instances.value.firstWhere(
+      (d) => p.basename(d.path) == name,
+      orElse: () => throw Exception("Instance '$name' does not exist.")
+    );
 
     final clientJar = File(p.join(instanceDir.path, '.client.jar'));
     if (!await clientJar.exists()) throw Exception(".client.jar missing.");
@@ -305,22 +310,26 @@ class InstanceManager {
 
   String? getInstancePath(String name) {
     final instanceDir = instances.value.firstWhere(
-        (d) => p.basename(d.path) == name);
-    return instanceDir.path;
+      (d) => p.basename(d.path) == name,
+      orElse: () => throw Exception("Instance '$name' does not exist."),
+    );
+    return instanceDir?.path;
   }
 
   Future<void> deleteInstance(String name) async {
-    final instanceDir =
-        instances.value.firstWhere((d) => p.basename(d.path) == name);
+    final instanceDir = instances.value.firstWhere(
+        (d) => p.basename(d.path) == name,
+        orElse: () => throw Exception("Instance '$name' does not exist."),
+    );
     await instanceDir.delete(recursive: true);
-    instances.value =
-        instances.value.where((d) => d != instanceDir).toList();
+    instances.value = instances.value.where((d) => d != instanceDir).toList();
   }
 
   Future<Map<String, String>> getConfig(String name) async {
     final instanceDir = instances.value.firstWhere(
         (d) => p.basename(d.path) == name,
-        orElse: () => throw Exception("Instance '$name' does not exist."));
+        orElse: () => throw Exception("Instance '$name' does not exist."),
+    );
     return await _loadConfig(instanceDir);
   }
 
@@ -330,10 +339,16 @@ class InstanceManager {
     await saveConfig(name, config);
   }
 
+  Future<String?> getConfigValue(String name, String key) async {
+    final config = await getConfig(name);
+    return config[key];
+  }
+
   Future<void> saveConfig(String name, Map<String, String> config) async {
     final instanceDir = instances.value.firstWhere(
         (d) => p.basename(d.path) == name,
-        orElse: () => throw Exception("Instance '$name' does not exist."));
+        orElse: () => throw Exception("Instance '$name' does not exist."),
+    );
     final configFile = File(p.join(instanceDir.path, 'instance.conf'));
 
     if (!config.containsKey('version') || config['version']!.isEmpty) {
@@ -348,13 +363,14 @@ class InstanceManager {
     try {
       final instanceDir = instances.value.firstWhere(
         (d) => p.basename(d.path) == name,
+        orElse: () => throw Exception("Instance '$name' does not exist."),
       );
 
       final iconFile = File(p.join(instanceDir.path, 'icon.png'));
       if (iconFile.existsSync()) {
         return FileImage(iconFile);
       }
-    } catch (_) { }
+    } catch (_) {}
 
     return const AssetImage('assets/icons/instance_icon.png');
   }

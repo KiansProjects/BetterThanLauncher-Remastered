@@ -74,8 +74,8 @@ flutter:
 
     - assets/backgrounds/background.png
 
-    - assets/scripts/Authenticate.java
-    - assets/scripts/JarMerger.java
+    - assets/scripts/Authenticate.class
+    - assets/scripts/JarMerger.class
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

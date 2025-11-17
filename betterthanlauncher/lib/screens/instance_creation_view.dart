@@ -54,7 +54,8 @@ class _InstanceCreationViewState extends State<InstanceCreationView> {
 
     try {
       final name = _nameController.text.trim();
-      await widget.instanceManager.createInstance(name);
+      final version = _selectedVersion!;
+      await widget.instanceManager.createInstance(name, version);
       widget.onCreated();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
