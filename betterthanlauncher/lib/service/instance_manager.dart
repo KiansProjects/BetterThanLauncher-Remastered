@@ -313,7 +313,7 @@ class InstanceManager {
       (d) => p.basename(d.path) == name,
       orElse: () => throw Exception("Instance '$name' does not exist."),
     );
-    return instanceDir?.path;
+    return instanceDir.path;
   }
 
   Future<void> deleteInstance(String name) async {
