@@ -120,16 +120,25 @@ class InstanceManager {
     final btaJarPath = await _versionManager.getVersion(version);
     final betaJarPath = await _versionManager.getVersion('b1.7.3');
 
-    final mergedJarPath = p.join(instance.path, '.client.jar');
-  
+    final mergedJarPath = p.join(instance.path, 'client.jar');
+    final hiddenJarPath = p.join(instance.path, '.client.jar');
+
     await Process.run(
       'java',
       ['-cp', _scriptsDir.path, 'JarMerger', btaJarPath!, betaJarPath!, mergedJarPath],
     );
 
-    final jar = File(mergedJarPath);
+    final mergedFile = File(mergedJarPath);
+    final hiddenFile = File(hiddenJarPath);
+
+    if (await hiddenFile.exists()) {
+      await hiddenFile.delete();
+    }
+
+    await mergedFile.rename(hiddenJarPath);
+
     if (Platform.isWindows) {
-      await _hideFileWindows(jar);
+      await _hideFileWindows(hiddenFile);
     }
   }
 
